@@ -40,10 +40,14 @@ const SERVICES = [
 ];
 
 const TRUSTED_CLIENTS = [
-  { name: "Tata", img: "https://upload.wikimedia.org/wikipedia/en/2/29/Tata_logo.svg" },
-  { name: "Reliance", img: "https://upload.wikimedia.org/wikipedia/en/b/bc/Reliance_Industries_Logo.svg" },
-  { name: "Swiggy", img: "https://upload.wikimedia.org/wikipedia/en/1/12/Swiggy_logo.svg" },
-  { name: "Amazon", img: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" },
+  { name: "Tata", img: "/logos/tata-logo.png" },
+  { name: "Reliance", img: "/logos/reliance-logo.png" },
+  { name: "Swiggy", img: "/logos/swiggy-logo.png" },
+  { name: "Amazon", img: "/logos/amazon-logo.png" },
+  { name: "Google", img: "/logos/google-logo.png" },
+  { name: "Zomato", img: "/logos/zomato-logo.png" },
+  { name: "Flipkart", img: "/logos/flipkart-logo.png" },
+  { name: "Ola", img: "/logos/ola-logo.png" },
 ];
 
 const SLOTS = [
