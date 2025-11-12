@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Sun, Moon, Search, Sparkles, Home, Calendar, User, LogOut } from "lucide-react";
+import { Sun, Moon, Search, Sparkles, Home, Calendar, User, LogOut, SlidersHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import AIChatbot from "@/components/AIChatbot";
 import logo from "@/assets/helperhub-logo.png";
@@ -23,6 +24,7 @@ const HOURS = ["Full-time", "Part-time", "Morning", "Evening"];
 const WORK_TYPES = ["Cleaning", "Cooking", "Baby Care", "Elder Care", "Plumbing", "Electrician", "Gardening"];
 const CASTES = ["Any", "General", "OBC", "SC/ST", "Other"];
 const HOUSE_SIZES = ["1 BHK", "2 BHK", "3 BHK", "4+ BHK"];
+const AREAS = ["North Delhi", "South Delhi", "East Delhi", "West Delhi", "Central Delhi", "Gurgaon", "Noida", "Ghaziabad"];
 
 const MOCK_HELPERS = [
   { id: 1, name: "Marvin Smith", avatar: "https://randomuser.me/api/portraits/men/45.jpg", gender: "Male", ageGroup: "26-35", caste: "Any", hours: "Full-time", workType: "Plumbing", familyMembers: 3, houseSize: "3 BHK", rate: 99, rating: 4.8, verified: true },
@@ -69,7 +71,8 @@ const Dashboard = () => {
     hours: "all",
     workType: "all",
     familyMembers: "",
-    houseSize: "",
+    houseSize: "all",
+    area: "all",
   });
   const [recommended, setRecommended] = useState<typeof MOCK_HELPERS>([]);
   const [selectedSlot, setSelectedSlot] = useState("1hr");
@@ -107,7 +110,7 @@ const Dashboard = () => {
       if (filters.caste !== "Any" && filters.caste && h.caste !== filters.caste) return false;
       if (filters.hours && filters.hours !== "all" && h.hours !== filters.hours) return false;
       if (filters.workType && filters.workType !== "all" && h.workType !== filters.workType) return false;
-      if (filters.houseSize && h.houseSize !== filters.houseSize) return false;
+      if (filters.houseSize && filters.houseSize !== "all" && h.houseSize !== filters.houseSize) return false;
       if (filters.familyMembers && Number(filters.familyMembers) && h.familyMembers !== Number(filters.familyMembers)) return false;
       if (query && !`${h.name} ${h.workType}`.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
@@ -115,7 +118,7 @@ const Dashboard = () => {
   }, [filters, query]);
 
   const clearFilters = () => {
-    setFilters({ gender: "Any", ageGroup: "all", caste: "Any", hours: "all", workType: "all", familyMembers: "", houseSize: "" });
+    setFilters({ gender: "Any", ageGroup: "all", caste: "Any", hours: "all", workType: "all", familyMembers: "", houseSize: "all", area: "all" });
     setQuery("");
     setRecommended([]);
   };
@@ -178,68 +181,132 @@ const Dashboard = () => {
           </header>
 
           {/* Filters */}
-          <div className="mb-6 overflow-x-auto">
-            <div className="flex gap-3 pb-2">
-              <Select value={filters.gender} onValueChange={(v) => updateFilter("gender", v)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {g}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="mb-6 flex gap-3">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <SlidersHorizontal size={16} />
+                  Filters
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 bg-popover z-50" align="start">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Filter Helpers</h3>
+                  
+                  <div className="space-y-2">
+                    <Label>Gender</Label>
+                    <Select value={filters.gender} onValueChange={(v) => updateFilter("gender", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GENDERS.map((g) => (
+                          <SelectItem key={g} value={g}>
+                            {g}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <Select value={filters.ageGroup} onValueChange={(v) => updateFilter("ageGroup", v)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Age Group" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Ages</SelectItem>
-                  {AGE_GROUPS.map((a) => (
-                    <SelectItem key={a} value={a}>
-                      {a}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <div className="space-y-2">
+                    <Label>Age Group</Label>
+                    <Select value={filters.ageGroup} onValueChange={(v) => updateFilter("ageGroup", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select age group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Ages</SelectItem>
+                        {AGE_GROUPS.map((a) => (
+                          <SelectItem key={a} value={a}>
+                            {a}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <Select value={filters.workType} onValueChange={(v) => updateFilter("workType", v)}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Type of Work" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {WORK_TYPES.map((w) => (
-                    <SelectItem key={w} value={w}>
-                      {w}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <div className="space-y-2">
+                    <Label>Working Hours</Label>
+                    <Select value={filters.hours} onValueChange={(v) => updateFilter("hours", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select hours" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Hours</SelectItem>
+                        {HOURS.map((h) => (
+                          <SelectItem key={h} value={h}>
+                            {h}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <Select value={filters.hours} onValueChange={(v) => updateFilter("hours", v)}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Working Hours" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Hours</SelectItem>
-                  {HOURS.map((h) => (
-                    <SelectItem key={h} value={h}>
-                      {h}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <div className="space-y-2">
+                    <Label>Type of Work</Label>
+                    <Select value={filters.workType} onValueChange={(v) => updateFilter("workType", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select work type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        {WORK_TYPES.map((w) => (
+                          <SelectItem key={w} value={w}>
+                            {w}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <Button onClick={aiRecommend} className="gap-2">
-                <Sparkles size={16} />
-                AI Recommend
-              </Button>
-            </div>
+                  <div className="space-y-2">
+                    <Label>Type of House</Label>
+                    <Select value={filters.houseSize} onValueChange={(v) => updateFilter("houseSize", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select house size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Sizes</SelectItem>
+                        {HOUSE_SIZES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Area</Label>
+                    <Select value={filters.area} onValueChange={(v) => updateFilter("area", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select area" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Areas</SelectItem>
+                        {AREAS.map((a) => (
+                          <SelectItem key={a} value={a}>
+                            {a}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" onClick={clearFilters} className="flex-1">
+                      Clear All
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Button onClick={aiRecommend} className="gap-2">
+              <Sparkles size={16} />
+              AI Recommend
+            </Button>
           </div>
 
           {/* Slot Booking */}
