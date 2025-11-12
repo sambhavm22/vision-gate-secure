@@ -60,10 +60,10 @@ const Dashboard = () => {
   const [searchScope, setSearchScope] = useState("City");
   const [filters, setFilters] = useState({
     gender: "Any",
-    ageGroup: "",
+    ageGroup: "all",
     caste: "Any",
-    hours: "",
-    workType: "",
+    hours: "all",
+    workType: "all",
     familyMembers: "",
     houseSize: "",
   });
@@ -81,9 +81,9 @@ const Dashboard = () => {
     const scored = MOCK_HELPERS.map((h) => {
       let score = 0;
       if (filters.gender === "Any" || !filters.gender || filters.gender === h.gender) score += 1;
-      if (!filters.ageGroup || filters.ageGroup === h.ageGroup) score += 1;
+      if (filters.ageGroup === "all" || !filters.ageGroup || filters.ageGroup === h.ageGroup) score += 1;
       if (!filters.caste || filters.caste === "Any" || filters.caste === h.caste) score += 1;
-      if (!filters.workType || filters.workType === h.workType) score += 2;
+      if (filters.workType === "all" || !filters.workType || filters.workType === h.workType) score += 2;
       if (h.verified) score += 1.5;
       score += h.rating / 5;
       return { ...h, score };
@@ -99,10 +99,10 @@ const Dashboard = () => {
   const candidates = useMemo(() => {
     return MOCK_HELPERS.filter((h) => {
       if (filters.gender !== "Any" && filters.gender && h.gender !== filters.gender) return false;
-      if (filters.ageGroup && h.ageGroup !== filters.ageGroup) return false;
+      if (filters.ageGroup && filters.ageGroup !== "all" && h.ageGroup !== filters.ageGroup) return false;
       if (filters.caste !== "Any" && filters.caste && h.caste !== filters.caste) return false;
-      if (filters.hours && h.hours !== filters.hours) return false;
-      if (filters.workType && h.workType !== filters.workType) return false;
+      if (filters.hours && filters.hours !== "all" && h.hours !== filters.hours) return false;
+      if (filters.workType && filters.workType !== "all" && h.workType !== filters.workType) return false;
       if (filters.houseSize && h.houseSize !== filters.houseSize) return false;
       if (filters.familyMembers && Number(filters.familyMembers) && h.familyMembers !== Number(filters.familyMembers)) return false;
       if (query && !`${h.name} ${h.workType}`.toLowerCase().includes(query.toLowerCase())) return false;
@@ -111,7 +111,7 @@ const Dashboard = () => {
   }, [filters, query]);
 
   const clearFilters = () => {
-    setFilters({ gender: "Any", ageGroup: "", caste: "Any", hours: "", workType: "", familyMembers: "", houseSize: "" });
+    setFilters({ gender: "Any", ageGroup: "all", caste: "Any", hours: "all", workType: "all", familyMembers: "", houseSize: "" });
     setQuery("");
     setRecommended([]);
   };
@@ -194,7 +194,7 @@ const Dashboard = () => {
                   <SelectValue placeholder="Age Group" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Ages</SelectItem>
+                  <SelectItem value="all">All Ages</SelectItem>
                   {AGE_GROUPS.map((a) => (
                     <SelectItem key={a} value={a}>
                       {a}
@@ -208,7 +208,7 @@ const Dashboard = () => {
                   <SelectValue placeholder="Type of Work" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   {WORK_TYPES.map((w) => (
                     <SelectItem key={w} value={w}>
                       {w}
@@ -222,7 +222,7 @@ const Dashboard = () => {
                   <SelectValue placeholder="Working Hours" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Hours</SelectItem>
+                  <SelectItem value="all">All Hours</SelectItem>
                   {HOURS.map((h) => (
                     <SelectItem key={h} value={h}>
                       {h}
