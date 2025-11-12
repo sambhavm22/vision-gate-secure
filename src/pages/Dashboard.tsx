@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import AIChatbot from "@/components/AIChatbot";
 import logo from "@/assets/helperhub-logo.png";
 import cleaningImg from "@/assets/cleaning-service.jpg";
 import cookImg from "@/assets/cook-service.jpg";
@@ -381,6 +382,9 @@ const Dashboard = () => {
             </div>
           </Card>
         </div>
+
+        {/* AI Chatbot */}
+        <AIChatbot />
       </div>
     </div>
   );
