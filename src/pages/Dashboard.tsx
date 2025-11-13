@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import AIChatbot from "@/components/AIChatbot";
 import logo from "@/assets/helperhub-logo.png";
 import cleaningImg from "@/assets/cleaning-service.jpg";
@@ -64,6 +65,8 @@ const Dashboard = () => {
   const [dark, setDark] = useState(true);
   const [query, setQuery] = useState("");
   const [searchScope, setSearchScope] = useState("City");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const isMobile = useIsMobile();
   const [filters, setFilters] = useState({
     gender: "Any",
     ageGroup: "all",
@@ -150,27 +153,72 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold">HelperHub</h1>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-card rounded-lg px-4 py-2 border">
-                <Select value={searchScope} onValueChange={setSearchScope}>
-                  <SelectTrigger className="w-[100px] border-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="City">City</SelectItem>
-                    <SelectItem value="Location">Location</SelectItem>
-                    <SelectItem value="Services">Services</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={`Search ${searchScope.toLowerCase()}...`}
-                  className="border-0 focus-visible:ring-0"
-                />
-                <Button size="icon" variant="ghost">
-                  <Search size={18} />
-                </Button>
-              </div>
+              {/* Desktop Search Bar */}
+              {!isMobile && (
+                <div className="flex items-center gap-2 bg-card rounded-lg px-4 py-2 border">
+                  <Select value={searchScope} onValueChange={setSearchScope}>
+                    <SelectTrigger className="w-[100px] border-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="City">City</SelectItem>
+                      <SelectItem value="Location">Location</SelectItem>
+                      <SelectItem value="Services">Services</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={`Search ${searchScope.toLowerCase()}...`}
+                    className="border-0 focus-visible:ring-0"
+                  />
+                  <Button size="icon" variant="ghost">
+                    <Search size={18} />
+                  </Button>
+                </div>
+              )}
+
+              {/* Mobile Search Icon */}
+              {isMobile && (
+                <Popover open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button size="icon" variant="outline">
+                      <Search size={18} />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 bg-popover" align="end">
+                    <div className="space-y-3">
+                      <h3 className="font-semibold">Search</h3>
+                      <div className="space-y-2">
+                        <Label>Search by</Label>
+                        <Select value={searchScope} onValueChange={setSearchScope}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="City">City</SelectItem>
+                            <SelectItem value="Location">Location</SelectItem>
+                            <SelectItem value="Services">Services</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Search query</Label>
+                        <Input
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          placeholder={`Search ${searchScope.toLowerCase()}...`}
+                        />
+                      </div>
+                      <Button className="w-full" onClick={() => setMobileSearchOpen(false)}>
+                        <Search size={16} className="mr-2" />
+                        Search
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+
               <Button onClick={() => setDark((d) => !d)} size="icon" variant="outline">
                 {dark ? <Sun size={18} /> : <Moon size={18} />}
               </Button>
