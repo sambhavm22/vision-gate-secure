@@ -381,21 +381,6 @@ const Dashboard = () => {
                 </Button>
               ))}
             </div>
-
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox id="prebook" checked={prebook} onCheckedChange={(checked) => setPrebook(checked as boolean)} />
-                <Label htmlFor="prebook" className="text-sm cursor-pointer">
-                  Prebook for convenience
-                </Label>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={clearFilters} variant="outline">
-                  Clear
-                </Button>
-                <Button>Continue</Button>
-              </div>
-            </div>
           </Card>
 
           {/* Prebook for convenience */}
