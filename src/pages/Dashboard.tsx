@@ -79,7 +79,7 @@ const Dashboard = () => {
   });
   const [recommended, setRecommended] = useState<typeof MOCK_HELPERS>([]);
   const [selectedSlot, setSelectedSlot] = useState("1hr");
-  const [prebook, setPrebook] = useState(false);
+  const [bookingType, setBookingType] = useState<"single" | "multiple" | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -357,44 +357,74 @@ const Dashboard = () => {
             </Button>
           </div>
 
-          {/* Slot Booking */}
+          {/* Prebook for convenience */}
           <Card className="mb-6 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-semibold">Book a slot</h2>
-                <p className="text-sm text-muted-foreground">Choose a slot to book a helper</p>
-              </div>
-              <p className="text-sm text-muted-foreground">From Rs. 99/-</p>
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold mb-2">Prebook for convenience</h2>
+              <p className="text-lg text-muted-foreground">Tap to select your slot</p>
             </div>
 
-            <div className="flex gap-3 overflow-x-auto pb-3">
-              {SLOTS.map((s) => (
-                <Button
-                  key={s.id}
-                  variant={selectedSlot === s.id ? "default" : "outline"}
-                  onClick={() => setSelectedSlot(s.id)}
-                  className="min-w-[120px] flex-col h-auto py-3"
-                >
-                  <div className="font-medium">{s.label}</div>
-                  <div className="text-sm opacity-80">Rs. {s.price}/-</div>
-                </Button>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <Card
+                className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
+                  bookingType === "single" ? "ring-2 ring-primary" : ""
+                }`}
+                onClick={() => setBookingType("single")}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-1">Single</h3>
+                    <h3 className="text-2xl font-bold">Booking</h3>
+                  </div>
+                  <div className="text-6xl">⏰</div>
+                </div>
+              </Card>
+
+              <Card
+                className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
+                  bookingType === "multiple" ? "ring-2 ring-primary" : ""
+                }`}
+                onClick={() => setBookingType("multiple")}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-1">Multiple</h3>
+                    <h3 className="text-2xl font-bold">Booking</h3>
+                  </div>
+                  <div className="text-6xl">📅</div>
+                </div>
+              </Card>
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox id="prebook" checked={prebook} onCheckedChange={(checked) => setPrebook(checked as boolean)} />
-                <Label htmlFor="prebook" className="text-sm cursor-pointer">
-                  Prebook for convenience
-                </Label>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={clearFilters} variant="outline">
-                  Clear
-                </Button>
-                <Button>Continue</Button>
-              </div>
-            </div>
+            {bookingType && (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold mb-3">
+                    {bookingType === "single" ? "Select duration" : "Select package"}
+                  </h3>
+                  <div className="flex gap-3 overflow-x-auto pb-3">
+                    {SLOTS.map((s) => (
+                      <Button
+                        key={s.id}
+                        variant={selectedSlot === s.id ? "default" : "outline"}
+                        onClick={() => setSelectedSlot(s.id)}
+                        className="min-w-[120px] flex-col h-auto py-3"
+                      >
+                        <div className="font-medium">{s.label}</div>
+                        <div className="text-sm opacity-80">Rs. {s.price}/-</div>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button onClick={clearFilters} variant="outline">
+                    Clear
+                  </Button>
+                  <Button>Continue</Button>
+                </div>
+              </>
+            )}
           </Card>
 
           {/* Available Helpers */}
