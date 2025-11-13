@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AIChatbot from "@/components/AIChatbot";
@@ -35,11 +36,91 @@ const MOCK_HELPERS = [
 ];
 
 const SERVICES = [
-  { name: "Daily Cleaning", img: cleaningImg },
-  { name: "Cook", img: cookImg },
-  { name: "Babysitter", img: babysitterImg },
-  { name: "Elder Care", img: eldercareImg },
-  { name: "Gardening", img: gardeningImg },
+  { 
+    name: "Daily Cleaning", 
+    img: cleaningImg,
+    expectations: [
+      "Thorough cleaning of all rooms",
+      "Dusting furniture and surfaces",
+      "Mopping and vacuuming floors",
+      "Bathroom and kitchen cleaning",
+      "Organized and tidy spaces"
+    ],
+    notExpected: [
+      "Deep carpet cleaning",
+      "Window cleaning (exterior)",
+      "Heavy lifting or moving furniture",
+      "Specialized cleaning equipment"
+    ]
+  },
+  { 
+    name: "Cook", 
+    img: cookImg,
+    expectations: [
+      "Meal preparation as per menu",
+      "Kitchen cleaning after cooking",
+      "Shopping for groceries (if agreed)",
+      "Special dietary requirements handling",
+      "Hygienic food handling"
+    ],
+    notExpected: [
+      "Serving food at the table",
+      "Washing all household dishes",
+      "Catering for large parties",
+      "Professional chef-level cuisine"
+    ]
+  },
+  { 
+    name: "Babysitter", 
+    img: babysitterImg,
+    expectations: [
+      "Child supervision and safety",
+      "Feeding and basic care",
+      "Play and engagement activities",
+      "Diaper changing for infants",
+      "Following parent instructions"
+    ],
+    notExpected: [
+      "Medical care or medication",
+      "Teaching academic subjects",
+      "Overnight stays without agreement",
+      "Handling multiple children alone"
+    ]
+  },
+  { 
+    name: "Elder Care", 
+    img: eldercareImg,
+    expectations: [
+      "Companionship and conversation",
+      "Medication reminders",
+      "Assistance with mobility",
+      "Meal preparation and feeding",
+      "Light housekeeping"
+    ],
+    notExpected: [
+      "Medical procedures or nursing",
+      "Heavy lifting or transfers",
+      "24-hour monitoring",
+      "Specialized medical care"
+    ]
+  },
+  { 
+    name: "Gardening", 
+    img: gardeningImg,
+    expectations: [
+      "Lawn mowing and trimming",
+      "Watering plants",
+      "Weeding and basic maintenance",
+      "Seasonal planting",
+      "Garden tool maintenance"
+    ],
+    notExpected: [
+      "Landscape design",
+      "Tree cutting or removal",
+      "Pest control services",
+      "Heavy construction work"
+    ]
+  },
 ];
 
 const TRUSTED_CLIENTS = [
@@ -81,8 +162,16 @@ const Dashboard = () => {
   const [selectedSlot, setSelectedSlot] = useState("1hr");
   const [prebook, setPrebook] = useState(false);
   const [bookingType, setBookingType] = useState<"single" | "multiple" | null>(null);
+  const [selectedService, setSelectedService] = useState<typeof SERVICES[0] | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Mock function to get available helpers count based on area and service
+  const getAvailableHelpers = (serviceName: string) => {
+    const areaName = filters.area === "all" ? "your area" : filters.area;
+    const count = Math.floor(Math.random() * 50) + 10; // Mock: 10-60 helpers
+    return { count, area: areaName };
+  };
 
   const updateFilter = (key: string, value: string) => {
     setFilters((f) => ({ ...f, [key]: value }));
@@ -423,77 +512,99 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          {/* Available Helpers */}
-          <section className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Available Helpers</h3>
-              <Badge variant="secondary">{candidates.length} found</Badge>
-            </div>
-
-            {recommended.length > 0 ? (
-              <div className="space-y-3">
-                {recommended.map((r) => (
-                  <Card key={r.id} className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <img src={r.avatar} alt={r.name} className="w-16 h-16 rounded-full object-cover" />
-                      <div>
-                        <div className="font-medium flex items-center gap-2">
-                          {r.name}
-                          {r.verified && <Badge variant="secondary">Verified</Badge>}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {r.workType} • Rs. {r.rate}/-
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm mb-2">{r.rating} ★</div>
-                      <Button size="sm" onClick={() => handleBook(r.name)}>
-                        Book
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {candidates.map((h) => (
-                  <Card key={h.id} className="p-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      <img src={h.avatar} alt={h.name} className="w-16 h-16 rounded-full object-cover" />
-                      <div className="flex-1">
-                        <div className="font-medium flex items-center gap-2">
-                          {h.name}
-                          {h.verified && <Badge variant="secondary" className="text-xs">✓</Badge>}
-                        </div>
-                        <div className="text-sm text-muted-foreground">{h.workType}</div>
-                        <div className="text-sm text-primary font-medium">Rs. {h.rate}/-</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm">{h.rating} ★</div>
-                      <Button size="sm" onClick={() => handleBook(h.name)}>
-                        Book
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
 
           {/* Services */}
           <Card className="mb-6 p-6">
             <h3 className="text-xl font-semibold mb-4">Services</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {SERVICES.map((s) => (
-                <Button key={s.name} variant="outline" className="flex-col h-auto p-4 gap-3">
+                <Button 
+                  key={s.name} 
+                  variant="outline" 
+                  className="flex-col h-auto p-4 gap-3"
+                  onClick={() => setSelectedService(s)}
+                >
                   <img src={s.img} alt={s.name} className="w-16 h-16 rounded-lg object-cover" />
                   <span className="text-sm">{s.name}</span>
                 </Button>
               ))}
             </div>
           </Card>
+
+          {/* Service Details Dialog */}
+          <Dialog open={!!selectedService} onOpenChange={(open) => !open && setSelectedService(null)}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              {selectedService && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl flex items-center gap-3">
+                      <img src={selectedService.img} alt={selectedService.name} className="w-12 h-12 rounded-lg object-cover" />
+                      {selectedService.name}
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  <div className="space-y-6 mt-4">
+                    {/* Available Helpers */}
+                    <div className="bg-primary/10 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-lg">Available Helpers</h3>
+                          <p className="text-sm text-muted-foreground">
+                            in {getAvailableHelpers(selectedService.name).area}
+                          </p>
+                        </div>
+                        <Badge variant="default" className="text-2xl px-4 py-2">
+                          {getAvailableHelpers(selectedService.name).count}+
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* What to Expect */}
+                    <div>
+                      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                        <span className="text-2xl">✓</span>
+                        What to Expect
+                      </h3>
+                      <ul className="space-y-2">
+                        {selectedService.expectations.map((exp, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-sm">
+                            <span className="text-green-500 mt-0.5">●</span>
+                            <span>{exp}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* What NOT to Expect */}
+                    <div>
+                      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                        <span className="text-2xl">✗</span>
+                        What NOT to Expect
+                      </h3>
+                      <ul className="space-y-2">
+                        {selectedService.notExpected.map((notExp, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-sm">
+                            <span className="text-red-500 mt-0.5">●</span>
+                            <span>{notExp}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-4">
+                      <Button className="flex-1" onClick={() => setSelectedService(null)}>
+                        Book Now
+                      </Button>
+                      <Button variant="outline" onClick={() => setSelectedService(null)}>
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
 
           {/* Trusted Clients */}
           <section className="mb-24">
