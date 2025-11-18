@@ -1,647 +1,472 @@
-import { useState, useMemo } from "react";
-import { Sun, Moon, Search, Sparkles, Home, Calendar, User, LogOut, SlidersHorizontal } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Sun, Moon, Search, Sparkles, Home, Calendar, User, LogOut, Star, MapPin, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
 import AIChatbot from "@/components/AIChatbot";
 import logo from "@/assets/helperhub-logo.png";
-import cleaningImg from "@/assets/cleaning-service.jpg";
-import cookImg from "@/assets/cook-service.jpg";
-import babysitterImg from "@/assets/babysitter-service.jpg";
-import eldercareImg from "@/assets/eldercare-service.jpg";
-import gardeningImg from "@/assets/gardening-service.jpg";
 
-const AGE_GROUPS = ["18-25", "26-35", "36-50", "50+"];
-const GENDERS = ["Any", "Male", "Female", "Other"];
-const HOURS = ["Full-time", "Part-time", "Morning", "Evening"];
-const WORK_TYPES = ["Cleaning", "Cooking", "Baby Care", "Elder Care", "Plumbing", "Electrician", "Gardening"];
-const CASTES = ["Any", "General", "OBC", "SC/ST", "Other"];
-const HOUSE_SIZES = ["1 BHK", "2 BHK", "3 BHK", "4+ BHK"];
-const AREAS = ["North Delhi", "South Delhi", "East Delhi", "West Delhi", "Central Delhi", "Gurgaon", "Noida", "Ghaziabad"];
+interface Service {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string;
+  base_price: number;
+}
 
-const MOCK_HELPERS = [
-  { id: 1, name: "Marvin Smith", avatar: "https://randomuser.me/api/portraits/men/45.jpg", gender: "Male", ageGroup: "26-35", caste: "Any", hours: "Full-time", workType: "Plumbing", familyMembers: 3, houseSize: "3 BHK", rate: 99, rating: 4.8, verified: true },
-  { id: 2, name: "Brooklyn Simmons", avatar: "https://randomuser.me/api/portraits/women/32.jpg", gender: "Female", ageGroup: "26-35", caste: "General", hours: "Part-time", workType: "Electrician", familyMembers: 4, houseSize: "2 BHK", rate: 199, rating: 4.0, verified: true },
-  { id: 3, name: "Darlene Robertson", avatar: "https://randomuser.me/api/portraits/women/55.jpg", gender: "Female", ageGroup: "36-50", caste: "OBC", hours: "Morning", workType: "Cleaning", familyMembers: 5, houseSize: "4+ BHK", rate: 249, rating: 4.3, verified: false },
-  { id: 4, name: "Sui Moh", avatar: "https://randomuser.me/api/portraits/men/27.jpg", gender: "Male", ageGroup: "18-25", caste: "Any", hours: "Evening", workType: "Gardening", familyMembers: 2, houseSize: "1 BHK", rate: 299, rating: 4.5, verified: true },
-];
+interface Helper {
+  id: string;
+  full_name: string;
+  phone: string;
+  email: string;
+  service_type: string;
+  rating: number;
+  total_reviews: number;
+  experience_years: number;
+  hourly_rate: number;
+  profile_image_url: string | null;
+  verified: boolean;
+  bio: string;
+  city: string;
+}
 
-const SERVICES = [
-  { 
-    name: "Daily Cleaning", 
-    img: cleaningImg,
-    expectations: [
-      "Thorough cleaning of all rooms",
-      "Dusting furniture and surfaces",
-      "Mopping and vacuuming floors",
-      "Bathroom and kitchen cleaning",
-      "Organized and tidy spaces"
-    ],
-    notExpected: [
-      "Deep carpet cleaning",
-      "Window cleaning (exterior)",
-      "Heavy lifting or moving furniture",
-      "Specialized cleaning equipment"
-    ]
-  },
-  { 
-    name: "Cook", 
-    img: cookImg,
-    expectations: [
-      "Meal preparation as per menu",
-      "Kitchen cleaning after cooking",
-      "Shopping for groceries (if agreed)",
-      "Special dietary requirements handling",
-      "Hygienic food handling"
-    ],
-    notExpected: [
-      "Serving food at the table",
-      "Washing all household dishes",
-      "Catering for large parties",
-      "Professional chef-level cuisine"
-    ]
-  },
-  { 
-    name: "Babysitter", 
-    img: babysitterImg,
-    expectations: [
-      "Child supervision and safety",
-      "Feeding and basic care",
-      "Play and engagement activities",
-      "Diaper changing for infants",
-      "Following parent instructions"
-    ],
-    notExpected: [
-      "Medical care or medication",
-      "Teaching academic subjects",
-      "Overnight stays without agreement",
-      "Handling multiple children alone"
-    ]
-  },
-  { 
-    name: "Elder Care", 
-    img: eldercareImg,
-    expectations: [
-      "Companionship and conversation",
-      "Medication reminders",
-      "Assistance with mobility",
-      "Meal preparation and feeding",
-      "Light housekeeping"
-    ],
-    notExpected: [
-      "Medical procedures or nursing",
-      "Heavy lifting or transfers",
-      "24-hour monitoring",
-      "Specialized medical care"
-    ]
-  },
-  { 
-    name: "Gardening", 
-    img: gardeningImg,
-    expectations: [
-      "Lawn mowing and trimming",
-      "Watering plants",
-      "Weeding and basic maintenance",
-      "Seasonal planting",
-      "Garden tool maintenance"
-    ],
-    notExpected: [
-      "Landscape design",
-      "Tree cutting or removal",
-      "Pest control services",
-      "Heavy construction work"
-    ]
-  },
-];
-
-const TRUSTED_CLIENTS = [
-  { name: "Tata", img: "/logos/tata-logo.png" },
-  { name: "Reliance", img: "/logos/reliance-logo.png" },
-  { name: "Swiggy", img: "/logos/swiggy-logo.png" },
-  { name: "Amazon", img: "/logos/amazon-logo.png" },
-  { name: "Google", img: "/logos/google-logo.png" },
-  { name: "Zomato", img: "/logos/zomato-logo.png" },
-  { name: "Flipkart", img: "/logos/flipkart-logo.png" },
-  { name: "Ola", img: "/logos/ola-logo.png" },
-];
-
-const SLOTS = [
-  { id: "1hr", label: "1 hr", price: 99 },
-  { id: "2hr", label: "2 hrs", price: 199 },
-  { id: "1week", label: "1 week", price: 999 },
-  { id: "1month", label: "1 month", price: 2499 },
-  { id: "12month", label: "12 months", price: 19999 },
-];
+interface Availability {
+  id: string;
+  helper_id: string;
+  available_date: string;
+  start_time: string;
+  end_time: string;
+  is_booked: boolean;
+}
 
 const Dashboard = () => {
-  const [dark, setDark] = useState(true);
-  const [query, setQuery] = useState("");
-  const [searchScope, setSearchScope] = useState("City");
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const isMobile = useIsMobile();
-  const [filters, setFilters] = useState({
-    gender: "Any",
-    ageGroup: "all",
-    caste: "Any",
-    hours: "all",
-    workType: "all",
-    familyMembers: "",
-    houseSize: "all",
-    area: "all",
-  });
-  const [recommended, setRecommended] = useState<typeof MOCK_HELPERS>([]);
-  const [selectedSlot, setSelectedSlot] = useState("1hr");
-  const [prebook, setPrebook] = useState(false);
-  const [bookingType, setBookingType] = useState<"single" | "multiple" | null>(null);
-  const [selectedService, setSelectedService] = useState<typeof SERVICES[0] | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
-  // Mock function to get available helpers count based on area and service
-  const getAvailableHelpers = (serviceName: string) => {
-    const areaName = filters.area === "all" ? "your area" : filters.area;
-    const count = Math.floor(Math.random() * 50) + 10; // Mock: 10-60 helpers
-    return { count, area: areaName };
+  const [darkMode, setDarkMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedService, setSelectedService] = useState<string>("all");
+  const [services, setServices] = useState<Service[]>([]);
+  const [helpers, setHelpers] = useState<Helper[]>([]);
+  const [selectedHelper, setSelectedHelper] = useState<Helper | null>(null);
+  const [availability, setAvailability] = useState<Availability[]>([]);
+  const [showAvailability, setShowAvailability] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("");
+  const [bookingLocation, setBookingLocation] = useState("");
+
+  useEffect(() => {
+    fetchServices();
+    fetchHelpers();
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/login");
+    }
   };
 
-  const updateFilter = (key: string, value: string) => {
-    setFilters((f) => ({ ...f, [key]: value }));
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("services")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      setServices(data || []);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load services",
+        variant: "destructive",
+      });
+    }
   };
 
-  const aiRecommend = () => {
-    const scored = MOCK_HELPERS.map((h) => {
-      let score = 0;
-      if (filters.gender === "Any" || !filters.gender || filters.gender === h.gender) score += 1;
-      if (filters.ageGroup === "all" || !filters.ageGroup || filters.ageGroup === h.ageGroup) score += 1;
-      if (!filters.caste || filters.caste === "Any" || filters.caste === h.caste) score += 1;
-      if (filters.workType === "all" || !filters.workType || filters.workType === h.workType) score += 2;
-      if (h.verified) score += 1.5;
-      score += h.rating / 5;
-      return { ...h, score };
-    });
-    scored.sort((a, b) => b.score - a.score);
-    setRecommended(scored.slice(0, 6));
-    toast({
-      title: "AI Recommendations Ready!",
-      description: `Found ${scored.length} helpers matching your preferences.`,
-    });
+  const fetchHelpers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("helpers")
+        .select("*")
+        .order("rating", { ascending: false });
+
+      if (error) throw error;
+      setHelpers(data || []);
+    } catch (error) {
+      console.error("Error fetching helpers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load helpers",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const candidates = useMemo(() => {
-    return MOCK_HELPERS.filter((h) => {
-      if (filters.gender !== "Any" && filters.gender && h.gender !== filters.gender) return false;
-      if (filters.ageGroup && filters.ageGroup !== "all" && h.ageGroup !== filters.ageGroup) return false;
-      if (filters.caste !== "Any" && filters.caste && h.caste !== filters.caste) return false;
-      if (filters.hours && filters.hours !== "all" && h.hours !== filters.hours) return false;
-      if (filters.workType && filters.workType !== "all" && h.workType !== filters.workType) return false;
-      if (filters.houseSize && filters.houseSize !== "all" && h.houseSize !== filters.houseSize) return false;
-      if (filters.familyMembers && Number(filters.familyMembers) && h.familyMembers !== Number(filters.familyMembers)) return false;
-      if (query && !`${h.name} ${h.workType}`.toLowerCase().includes(query.toLowerCase())) return false;
-      return true;
-    });
-  }, [filters, query]);
+  const fetchAvailability = async (helperId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("helper_availability")
+        .select("*")
+        .eq("helper_id", helperId)
+        .eq("is_booked", false)
+        .gte("available_date", new Date().toISOString().split("T")[0])
+        .order("available_date");
 
-  const clearFilters = () => {
-    setFilters({ gender: "Any", ageGroup: "all", caste: "Any", hours: "all", workType: "all", familyMembers: "", houseSize: "all", area: "all" });
-    setQuery("");
-    setRecommended([]);
+      if (error) throw error;
+      setAvailability(data || []);
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load availability",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-    });
+  const handleServiceClick = (serviceName: string) => {
+    setSelectedService(serviceName);
+  };
+
+  const handleHelperClick = async (helper: Helper) => {
+    setSelectedHelper(helper);
+    setShowAvailability(true);
+    await fetchAvailability(helper.id);
+  };
+
+  const handleBooking = async () => {
+    if (!selectedHelper || !bookingDate || !bookingTime || !bookingLocation) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all booking details",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/login");
+        return;
+      }
+
+      const { error } = await supabase.from("bookings").insert({
+        user_id: session.user.id,
+        helper_id: selectedHelper.id,
+        service_type: selectedHelper.service_type,
+        booking_date: bookingDate,
+        booking_time: bookingTime,
+        location: bookingLocation,
+        total_amount: selectedHelper.hourly_rate,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Booking Confirmed!",
+        description: `Your booking with ${selectedHelper.full_name} has been confirmed.`,
+      });
+
+      setShowAvailability(false);
+      setSelectedHelper(null);
+      setBookingDate("");
+      setBookingTime("");
+      setBookingLocation("");
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      toast({
+        title: "Booking Failed",
+        description: "Failed to create booking. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate("/login");
   };
 
-  const handleBook = (helperName: string) => {
-    toast({
-      title: "Booking Confirmed!",
-      description: `Your booking with ${helperName} has been confirmed.`,
+  const filteredHelpers = useMemo(() => {
+    return helpers.filter((helper) => {
+      const matchesSearch = helper.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        helper.service_type.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesService = selectedService === "all" || helper.service_type === selectedService;
+      return matchesSearch && matchesService;
     });
-  };
+  }, [helpers, searchQuery, selectedService]);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
 
   return (
-    <div className={dark ? "dark" : ""}>
-      <div className="min-h-screen bg-background text-foreground p-4">
-        <div className="max-w-6xl mx-auto pb-28">
-          {/* Header */}
-          <header className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <img src={logo} alt="HelperHub" className="h-10 w-10" />
-              <h1 className="text-2xl font-bold">HelperHub</h1>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Desktop Search Bar */}
-              {!isMobile && (
-                <div className="flex items-center gap-2 bg-card rounded-lg px-4 py-2 border">
-                  <Select value={searchScope} onValueChange={setSearchScope}>
-                    <SelectTrigger className="w-[100px] border-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="City">City</SelectItem>
-                      <SelectItem value="Location">Location</SelectItem>
-                      <SelectItem value="Services">Services</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={`Search ${searchScope.toLowerCase()}...`}
-                    className="border-0 focus-visible:ring-0"
-                  />
-                  <Button size="icon" variant="ghost">
-                    <Search size={18} />
-                  </Button>
-                </div>
-              )}
-
-              {/* Mobile Search Icon */}
-              {isMobile && (
-                <Popover open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
-                  <PopoverTrigger asChild>
-                    <Button size="icon" variant="outline">
-                      <Search size={18} />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 bg-popover" align="end">
-                    <div className="space-y-3">
-                      <h3 className="font-semibold">Search</h3>
-                      <div className="space-y-2">
-                        <Label>Search by</Label>
-                        <Select value={searchScope} onValueChange={setSearchScope}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="City">City</SelectItem>
-                            <SelectItem value="Location">Location</SelectItem>
-                            <SelectItem value="Services">Services</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Search query</Label>
-                        <Input
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                          placeholder={`Search ${searchScope.toLowerCase()}...`}
-                        />
-                      </div>
-                      <Button className="w-full" onClick={() => setMobileSearchOpen(false)}>
-                        <Search size={16} className="mr-2" />
-                        Search
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-
-              <Button onClick={() => setDark((d) => !d)} size="icon" variant="outline">
-                {dark ? <Sun size={18} /> : <Moon size={18} />}
-              </Button>
-              <Button onClick={handleLogout} size="icon" variant="outline">
-                <LogOut size={18} />
-              </Button>
-            </div>
-          </header>
-
-          {/* Filters */}
-          <div className="mb-6 flex gap-3">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <SlidersHorizontal size={16} />
-                  Filters
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-96 bg-popover z-50" align="start">
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">Filter Helpers</h3>
-                  
-                  <div className="space-y-2">
-                    <Label>Gender</Label>
-                    <Select value={filters.gender} onValueChange={(v) => updateFilter("gender", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g} value={g}>
-                            {g}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Age Group</Label>
-                    <Select value={filters.ageGroup} onValueChange={(v) => updateFilter("ageGroup", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select age group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Ages</SelectItem>
-                        {AGE_GROUPS.map((a) => (
-                          <SelectItem key={a} value={a}>
-                            {a}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Working Hours</Label>
-                    <Select value={filters.hours} onValueChange={(v) => updateFilter("hours", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select hours" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Hours</SelectItem>
-                        {HOURS.map((h) => (
-                          <SelectItem key={h} value={h}>
-                            {h}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Type of Work</Label>
-                    <Select value={filters.workType} onValueChange={(v) => updateFilter("workType", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select work type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        {WORK_TYPES.map((w) => (
-                          <SelectItem key={w} value={w}>
-                            {w}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Type of House</Label>
-                    <Select value={filters.houseSize} onValueChange={(v) => updateFilter("houseSize", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select house size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Sizes</SelectItem>
-                        {HOUSE_SIZES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Area</Label>
-                    <Select value={filters.area} onValueChange={(v) => updateFilter("area", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select area" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Areas</SelectItem>
-                        {AREAS.map((a) => (
-                          <SelectItem key={a} value={a}>
-                            {a}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" onClick={clearFilters} className="flex-1">
-                      Clear All
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            <Button onClick={aiRecommend} className="gap-2">
-              <Sparkles size={16} />
-              AI Recommend
-            </Button>
+    <div className="min-h-screen bg-background transition-colors">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img src={logo} alt="HelperHub" className="h-10" />
+            {!isMobile && <h1 className="text-xl font-bold">HelperHub</h1>}
           </div>
 
-          {/* Slot Booking */}
-          <Card className="mb-6 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-semibold">Book a slot</h2>
-                <p className="text-sm text-muted-foreground">Choose a slot to book a helper</p>
-              </div>
-              <p className="text-sm text-muted-foreground">From Rs. 99/-</p>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDarkMode(!darkMode)}
+            >
+              {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <Home className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/my-bookings")}>
+              <Calendar className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/profile")}>
+              <User className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </header>
 
-            <div className="flex gap-3 overflow-x-auto pb-3">
-              {SLOTS.map((s) => (
-                <Button
-                  key={s.id}
-                  variant={selectedSlot === s.id ? "default" : "outline"}
-                  onClick={() => setSelectedSlot(s.id)}
-                  className="min-w-[120px] flex-col h-auto py-3"
-                >
-                  <div className="font-medium">{s.label}</div>
-                  <div className="text-sm opacity-80">Rs. {s.price}/-</div>
-                </Button>
-              ))}
+      <main className="container mx-auto px-4 py-8">
+        {/* Search and Filters */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search helpers or services..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
-          </Card>
+            <Select value={selectedService} onValueChange={setSelectedService}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="All Services" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Services</SelectItem>
+                {services.map((service) => (
+                  <SelectItem key={service.id} value={service.name}>
+                    {service.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-          {/* Prebook for convenience */}
-          <Card className="mb-6 p-6">
-            <div className="mb-6">
-              <h2 className="text-3xl font-bold mb-2">Prebook for convenience</h2>
-              <p className="text-lg text-muted-foreground">Tap to select your slot</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Services Grid */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold mb-6">Our Services</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {services.map((service) => (
               <Card
-                className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
-                  bookingType === "single" ? "ring-2 ring-primary" : ""
-                }`}
-                onClick={() => setBookingType("single")}
+                key={service.id}
+                className="cursor-pointer hover:shadow-lg transition-all duration-300 overflow-hidden group"
+                onClick={() => handleServiceClick(service.name)}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-1">Single</h3>
-                    <h3 className="text-2xl font-bold">Booking</h3>
+                <div className="relative h-32 overflow-hidden">
+                  <img
+                    src={service.image_url}
+                    alt={service.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <h3 className="text-white font-semibold text-sm">{service.name}</h3>
+                    <p className="text-white/80 text-xs">₹{service.base_price}/hr</p>
                   </div>
-                  <div className="text-6xl">⏰</div>
                 </div>
               </Card>
+            ))}
+          </div>
+        </section>
 
-              <Card
-                className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
-                  bookingType === "multiple" ? "ring-2 ring-primary" : ""
-                }`}
-                onClick={() => setBookingType("multiple")}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-1">Multiple</h3>
-                    <h3 className="text-2xl font-bold">Booking</h3>
-                  </div>
-                  <div className="text-6xl">📅</div>
-                </div>
-              </Card>
+        {/* Helpers Grid */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">
+              {selectedService === "all" ? "All Helpers" : `${selectedService} Helpers`}
+            </h2>
+            <Badge variant="secondary">{filteredHelpers.length} Available</Badge>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Loading helpers...</p>
             </div>
-          </Card>
-
-
-          {/* Services */}
-          <Card className="mb-6 p-6">
-            <h3 className="text-xl font-semibold mb-4">Services</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {SERVICES.map((s) => (
-                <Button 
-                  key={s.name} 
-                  variant="outline" 
-                  className="flex-col h-auto p-4 gap-3"
-                  onClick={() => setSelectedService(s)}
+          ) : filteredHelpers.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No helpers found</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredHelpers.map((helper) => (
+                <Card
+                  key={helper.id}
+                  className="cursor-pointer hover:shadow-xl transition-all duration-300"
+                  onClick={() => handleHelperClick(helper)}
                 >
-                  <img src={s.img} alt={s.name} className="w-16 h-16 rounded-lg object-cover" />
-                  <span className="text-sm">{s.name}</span>
-                </Button>
-              ))}
-            </div>
-          </Card>
-
-          {/* Service Details Dialog */}
-          <Dialog open={!!selectedService} onOpenChange={(open) => !open && setSelectedService(null)}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              {selectedService && (
-                <>
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl flex items-center gap-3">
-                      <img src={selectedService.img} alt={selectedService.name} className="w-12 h-12 rounded-lg object-cover" />
-                      {selectedService.name}
-                    </DialogTitle>
-                  </DialogHeader>
-
-                  <div className="space-y-6 mt-4">
-                    {/* Available Helpers */}
-                    <div className="bg-primary/10 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-lg">Available Helpers</h3>
-                          <p className="text-sm text-muted-foreground">
-                            in {getAvailableHelpers(selectedService.name).area}
-                          </p>
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start gap-4">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-2xl font-bold">
+                          {helper.full_name.charAt(0)}
                         </div>
-                        <Badge variant="default" className="text-2xl px-4 py-2">
-                          {getAvailableHelpers(selectedService.name).count}+
-                        </Badge>
+                        {helper.verified && (
+                          <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1">
+                            <Sparkles className="h-3 w-3" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg truncate">{helper.full_name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{helper.service_type}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span className="text-sm font-medium">{helper.rating}</span>
+                          <span className="text-xs text-muted-foreground">({helper.total_reviews})</span>
+                        </div>
                       </div>
                     </div>
-
-                    {/* What to Expect */}
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                        <span className="text-2xl">✓</span>
-                        What to Expect
-                      </h3>
-                      <ul className="space-y-2">
-                        {selectedService.expectations.map((exp, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm">
-                            <span className="text-green-500 mt-0.5">●</span>
-                            <span>{exp}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        <span>{helper.city}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span>{helper.experience_years} years experience</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <span className="font-semibold text-primary">₹{helper.hourly_rate}/hr</span>
+                        <Button size="sm">Book Now</Button>
+                      </div>
                     </div>
-
-                    {/* What NOT to Expect */}
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                        <span className="text-2xl">✗</span>
-                        What NOT to Expect
-                      </h3>
-                      <ul className="space-y-2">
-                        {selectedService.notExpected.map((notExp, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm">
-                            <span className="text-red-500 mt-0.5">●</span>
-                            <span>{notExp}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 pt-4">
-                      <Button className="flex-1" onClick={() => setSelectedService(null)}>
-                        Book Now
-                      </Button>
-                      <Button variant="outline" onClick={() => setSelectedService(null)}>
-                        Close
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
-
-          {/* Trusted Clients */}
-          <section className="mb-24">
-            <h3 className="text-xl font-semibold mb-4">Trusted by</h3>
-            <div className="flex gap-6 overflow-x-auto py-2">
-              {TRUSTED_CLIENTS.map((client) => (
-                <Card key={client.name} className="flex-shrink-0 w-36 h-24 flex items-center justify-center p-4">
-                  <img src={client.img} alt={client.name} className="max-h-12 object-contain" />
+                  </CardContent>
                 </Card>
               ))}
             </div>
-          </section>
-        </div>
+          )}
+        </section>
+      </main>
 
-        {/* Fixed Footer Navigation */}
-        <div className="fixed bottom-4 left-0 right-0 max-w-6xl mx-auto px-4">
-          <Card className="p-3">
-            <div className="flex justify-around items-center">
-              <Button variant="ghost" className="flex flex-col items-center gap-1 h-auto py-2">
-                <Home size={20} />
-                <span className="text-xs">Home</span>
-              </Button>
-              <Button variant="ghost" className="flex flex-col items-center gap-1 h-auto py-2">
-                <Calendar size={20} />
-                <span className="text-xs">My Bookings</span>
-              </Button>
-              <Button variant="ghost" className="flex flex-col items-center gap-1 h-auto py-2">
-                <User size={20} />
-                <span className="text-xs">Profile</span>
-              </Button>
+      {/* Availability Dialog */}
+      <Dialog open={showAvailability} onOpenChange={setShowAvailability}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Book {selectedHelper?.full_name}</DialogTitle>
+          </DialogHeader>
+
+          {selectedHelper && (
+            <div className="space-y-6">
+              <div className="flex items-start gap-4 p-4 bg-muted rounded-lg">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-2xl font-bold">
+                  {selectedHelper.full_name.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg">{selectedHelper.full_name}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedHelper.service_type}</p>
+                  <p className="text-sm mt-2">{selectedHelper.bio}</p>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-medium">{selectedHelper.rating}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedHelper.experience_years} years exp
+                    </span>
+                    <span className="text-sm font-semibold text-primary">
+                      ₹{selectedHelper.hourly_rate}/hr
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select Date</label>
+                  <Input
+                    type="date"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select Time</label>
+                  <Input
+                    type="time"
+                    value={bookingTime}
+                    onChange={(e) => setBookingTime(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Location</label>
+                  <Input
+                    placeholder="Enter your address"
+                    value={bookingLocation}
+                    onChange={(e) => setBookingLocation(e.target.value)}
+                  />
+                </div>
+
+                {availability.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Available Slots</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {availability.slice(0, 6).map((slot) => (
+                        <Badge key={slot.id} variant="outline" className="justify-center py-2">
+                          {new Date(slot.available_date).toLocaleDateString()} - {slot.start_time} to {slot.end_time}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={handleBooking} className="w-full" size="lg">
+                  Confirm Booking
+                </Button>
+              </div>
             </div>
-          </Card>
-        </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-        {/* AI Chatbot */}
-        <AIChatbot />
-      </div>
+      <AIChatbot />
     </div>
   );
 };
