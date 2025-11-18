@@ -14,7 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booking_date: string
+          booking_time: string
+          created_at: string | null
+          helper_id: string
+          id: string
+          location: string | null
+          notes: string | null
+          service_type: string
+          status: string | null
+          total_amount: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          booking_date: string
+          booking_time: string
+          created_at?: string | null
+          helper_id: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          service_type: string
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          booking_date?: string
+          booking_time?: string
+          created_at?: string | null
+          helper_id?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          service_type?: string
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_helper_id_fkey"
+            columns: ["helper_id"]
+            isOneToOne: false
+            referencedRelation: "helpers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      helper_availability: {
+        Row: {
+          available_date: string
+          created_at: string | null
+          end_time: string
+          helper_id: string
+          id: string
+          is_booked: boolean | null
+          start_time: string
+        }
+        Insert: {
+          available_date: string
+          created_at?: string | null
+          end_time: string
+          helper_id: string
+          id?: string
+          is_booked?: boolean | null
+          start_time: string
+        }
+        Update: {
+          available_date?: string
+          created_at?: string | null
+          end_time?: string
+          helper_id?: string
+          id?: string
+          is_booked?: boolean | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "helper_availability_helper_id_fkey"
+            columns: ["helper_id"]
+            isOneToOne: false
+            referencedRelation: "helpers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      helpers: {
+        Row: {
+          bio: string | null
+          city: string | null
+          created_at: string | null
+          email: string | null
+          experience_years: number | null
+          full_name: string
+          hourly_rate: number | null
+          id: string
+          phone: string | null
+          profile_image_url: string | null
+          rating: number | null
+          service_type: string
+          total_reviews: number | null
+          verified: boolean | null
+        }
+        Insert: {
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name: string
+          hourly_rate?: number | null
+          id?: string
+          phone?: string | null
+          profile_image_url?: string | null
+          rating?: number | null
+          service_type: string
+          total_reviews?: number | null
+          verified?: boolean | null
+        }
+        Update: {
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name?: string
+          hourly_rate?: number | null
+          id?: string
+          phone?: string | null
+          profile_image_url?: string | null
+          rating?: number | null
+          service_type?: string
+          total_reviews?: number | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          base_price: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+        }
+        Insert: {
+          base_price?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+        }
+        Update: {
+          base_price?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
