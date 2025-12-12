@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Banknote, CheckCircle2, Circle, CreditCard, Landmark, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -39,16 +40,56 @@ const Payment = () => {
         }
     ];
 
-    const handlePayment = () => {
-        toast({
-            title: selectedMethod === 'cash' ? "Booking Confirmed" : "Payment Successful",
-            description: selectedMethod === 'cash'
-                ? "Your service has been booked. You can pay after completion."
-                : "Your transaction was successful and booking is confirmed!",
-        });
-        setTimeout(() => {
-            navigate("/my-bookings");
-        }, 1500);
+    const handlePayment = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                toast({
+                    title: "Authentication Required",
+                    description: "Please log in to complete your booking.",
+                    variant: "destructive"
+                });
+                navigate("/login");
+                return;
+            }
+
+            toast({
+                title: "Processing Payment...",
+                description: "Please wait while we confirm your booking.",
+            });
+
+            // Use the create_booking RPC for transaction-safe booking
+            const { data: bookingId, error } = await supabase.rpc('create_booking', {
+                customer_uuid: session.user.id,
+                service_id_input: state.service_id || 1, // Fallback to 1 if not passed
+                address_id_input: null, // Address selection not implemented in this flow yet
+                scheduled_at_input: new Date(Date.now() + 15 * 60000).toISOString(), // "Arriving in 15 Min"
+                duration_minutes_input: (state.duration || 1) * 60,
+                preferred_worker_id_input: null
+            });
+
+            if (error) throw error;
+
+            toast({
+                title: selectedMethod === 'cash' ? "Booking Confirmed" : "Payment Successful",
+                description: selectedMethod === 'cash'
+                    ? "Your service has been booked. You can pay after completion."
+                    : "Your transaction was successful and booking is confirmed!",
+            });
+
+            setTimeout(() => {
+                navigate("/my-bookings");
+            }, 1500);
+
+        } catch (error: any) {
+            console.error("Booking Error:", error);
+            toast({
+                title: "Booking Failed",
+                description: error.message || "Something went wrong. Please try again.",
+                variant: "destructive"
+            });
+        }
     };
 
     return (

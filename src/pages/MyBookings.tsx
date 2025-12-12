@@ -1,26 +1,27 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, Clock, MapPin, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Calendar, MapPin, User, ArrowLeft, Clock } from "lucide-react";
 
 interface Booking {
   id: string;
-  service_type: string;
-  booking_date: string;
-  booking_time: string;
-  status: string;
-  location: string;
-  total_amount: number;
-  notes: string | null;
-  helpers: {
-    full_name: string;
-    phone: string;
-    rating: number;
+  service: {
+    name: string;
   };
+  scheduled_at: string;
+  status: string;
+  // location: string; // Not in DB yet, stored in notes
+  notes: string | null;
+  total_amount: number;
+  worker?: {
+    full_name: string;
+    // phone: string; // Not in public schema yet? Check workers_public.
+    rating: number;
+  } | null;
 }
 
 const MyBookings = () => {
@@ -41,21 +42,28 @@ const MyBookings = () => {
         return;
       }
 
+      // Check types.ts or runtime for exact relationship names. Usually 'workers_public' and 'services'
       const { data, error } = await supabase
         .from("bookings")
         .select(`
-          *,
-          helpers (
+          id,
+          scheduled_at,
+          status,
+          total_amount,
+          notes,
+          service:service_id (
+            name
+          ),
+          worker:worker_id (
             full_name,
-            phone,
             rating
           )
         `)
-        .eq("user_id", session.user.id)
-        .order("booking_date", { ascending: false });
+        .eq("customer_id", session.user.id) // Correct column name
+        .order("scheduled_at", { ascending: false });
 
       if (error) throw error;
-      setBookings(data || []);
+      setBookings(data as any || []); // Casting as any for now to bypass strict generic checks if types aren't perfect
     } catch (error) {
       console.error("Error fetching bookings:", error);
       toast({
@@ -70,14 +78,18 @@ const MyBookings = () => {
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "confirmed":
-        return "default";
+      case "matched":
+      case "en_route":
+      case "in_progress":
+        return "default"; // Active
       case "completed":
-        return "secondary";
+      case "paid":
+        return "secondary"; // Done
       case "cancelled":
         return "destructive";
+      case "requested":
       default:
-        return "outline";
+        return "outline"; // Pending/Requested
     }
   };
 
@@ -88,28 +100,6 @@ const MyBookings = () => {
       </div>
     );
   }
-
-  // Mock bookings data - will be replaced with actual data from database
-  const mockBookings = [
-    {
-      id: 1,
-      service: "Daily Cleaning",
-      date: "2024-01-15",
-      time: "10:00 AM",
-      helper: "Marvin Smith",
-      location: "North Delhi",
-      status: "confirmed",
-    },
-    {
-      id: 2,
-      service: "Cook",
-      date: "2024-01-20",
-      time: "8:00 AM",
-      helper: "Brooklyn Simmons",
-      location: "South Delhi",
-      status: "pending",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
@@ -127,7 +117,7 @@ const MyBookings = () => {
           <h1 className="text-3xl font-bold">My Bookings</h1>
           <p className="text-muted-foreground">View and manage your service bookings</p>
         </div>
-        
+
         {bookings.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
@@ -143,44 +133,55 @@ const MyBookings = () => {
               <Card key={booking.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">{booking.service_type}</CardTitle>
-                    <Badge variant={getStatusVariant(booking.status)}>
-                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                    <CardTitle className="text-xl">{booking.service?.name || 'Service Request'}</CardTitle>
+                    <Badge variant={getStatusVariant(booking.status) as any}>
+                      {booking.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-start gap-2">
-                      <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Helper</p>
-                        <p className="font-medium">{booking.helpers.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{booking.helpers.phone}</p>
-                      </div>
+                      {booking.worker ? (
+                        <>
+                          <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Helper</p>
+                            <p className="font-medium">{booking.worker.full_name}</p>
+                            <div className="flex items-center text-xs text-yellow-600">
+                              <span className="font-bold mr-1">{booking.worker.rating}</span> ★
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Helper</p>
+                            <p className="italic text-gray-500">Searching...</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-start gap-2">
                       <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Date & Time</p>
+                        <p className="text-sm text-muted-foreground">Scheduled For</p>
                         <p className="font-medium">
-                          {new Date(booking.booking_date).toLocaleDateString()} at {booking.booking_time}
+                          {new Date(booking.scheduled_at).toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-2 md:col-span-2">
-                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Location</p>
-                        <p className="font-medium">{booking.location}</p>
-                      </div>
-                    </div>
-                    {booking.notes && (
-                      <div className="md:col-span-2">
-                        <p className="text-sm text-muted-foreground">Notes</p>
-                        <p className="text-sm">{booking.notes}</p>
+                    {(booking.notes || 'Location not specified') && (
+                      <div className="flex items-start gap-2 md:col-span-2">
+                        <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Details / Location</p>
+                          <p className="font-medium">{booking.notes}</p>
+                        </div>
                       </div>
                     )}
+
                     <div className="md:col-span-2 pt-2 border-t flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Total Amount</span>
                       <span className="text-lg font-bold text-primary">₹{booking.total_amount}</span>
