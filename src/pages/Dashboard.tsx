@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, Calendar, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -65,12 +65,14 @@ const Dashboard = () => {
   const [showServiceGuidelines, setShowServiceGuidelines] = useState(false);
   const [activeGuidelineService, setActiveGuidelineService] = useState<string>("");
   const [showDurationDialog, setShowDurationDialog] = useState(false);
+  const [showServiceSelector, setShowServiceSelector] = useState(false);
+  const [showReferralDialog, setShowReferralDialog] = useState(false);
 
   const durationOptions = [
-    { label: "1 Hour", hours: 1, multiplier: 1 },
-    { label: "1.5 Hours", hours: 1.5, multiplier: 1.5 },
-    { label: "2 Hours", hours: 2, multiplier: 2 },
-    { label: "Full Day (8 Hrs)", hours: 8, multiplier: 8 },
+    { label: "1 hr", hours: 1, multiplier: 1 },
+    { label: "1.5 hrs", hours: 1.5, multiplier: 1.5 },
+    { label: "2 hrs", hours: 2, multiplier: 2 },
+    { label: "3 hrs", hours: 3, multiplier: 3 },
   ];
 
   const serviceGuidelines: Record<string, { dos: string[]; donts: string[] }> = {
@@ -323,7 +325,13 @@ const Dashboard = () => {
               <Badge className="mb-4" variant="secondary">Special Offer</Badge>
               <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary">Get 20% Off <br /><span className="text-foreground">On Your First Booking</span></h1>
               <p className="text-muted-foreground text-lg mb-6">Experience top-rated service professionals at unbeatable prices. Valid for all new users this month.</p>
-              <Button size="lg" className="rounded-full px-8">Book Now</Button>
+              <Button
+                size="lg"
+                className="rounded-full px-8"
+                onClick={() => setShowServiceSelector(true)}
+              >
+                Book Now
+              </Button>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-card p-4 rounded-2xl shadow-sm border">
@@ -399,7 +407,7 @@ const Dashboard = () => {
               className="cursor-pointer hover:shadow-lg transition-all duration-300 overflow-hidden group h-64 relative"
               onClick={() => handleServiceClick('Everyday Cleaning')}
             >
-              <img src="/src/assets/cleaning-service.jpg" alt="Everyday Cleaning" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+              <img src="/src/assets/cleaning-service-premium.png" alt="Everyday Cleaning" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-4">
                 <h3 className="text-white text-2xl font-bold">Everyday<br />Cleaning</h3>
@@ -409,7 +417,7 @@ const Dashboard = () => {
               className="cursor-pointer hover:shadow-lg transition-all duration-300 overflow-hidden group h-64 relative"
               onClick={() => handleServiceClick('Weekly Cleaning')}
             >
-              <img src="/src/assets/cleaning-service.jpg" alt="Weekly Cleaning" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+              <img src="/src/assets/weekly-cleaning-service.jpg" alt="Weekly Cleaning" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-4">
                 <h3 className="text-white text-2xl font-bold">Weekly<br />Cleaning</h3>
@@ -548,10 +556,12 @@ const Dashboard = () => {
           </div>
 
 
-          {/* Referral Banner */}
-          <div className="bg-gradient-to-r from-purple-500 to-purple-400 rounded-2xl p-4 flex items-center justify-between text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow mb-12">
+          <div
+            className="bg-gradient-to-r from-purple-500 to-purple-400 rounded-2xl p-4 flex items-center justify-between text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow mb-12"
+            onClick={() => setShowReferralDialog(true)}
+          >
             <div className="flex items-center gap-4">
-              <img src="/src/assets/referral-gift.png" alt="Gift" className="h-12 w-12 object-contain" />
+              <img src="/src/assets/referral-gift-box.png" alt="Gift" className="h-12 w-12 object-contain" />
               <div>
                 <h3 className="font-bold text-lg">Refer a Friend</h3>
                 <p className="text-purple-100 text-sm">Earn ₹150 for every referral</p>
@@ -745,9 +755,7 @@ const Dashboard = () => {
                 className="flex-1"
                 onClick={() => {
                   setShowServiceGuidelines(false);
-                  setSelectedService(activeGuidelineService);
-                  const element = document.getElementById('experts-section');
-                  if (element) element.scrollIntoView({ behavior: 'smooth' });
+                  setShowDurationDialog(true);
                 }}
               >
                 Book Now
@@ -766,6 +774,111 @@ const Dashboard = () => {
                 Pre-book
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Referral Dialog */}
+      <Dialog open={showReferralDialog} onOpenChange={setShowReferralDialog}>
+        <DialogContent className="max-w-sm p-0 overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 border-none text-white">
+          <div className="relative">
+            {/* Background Effects */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+              <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
+              <div className="absolute bottom-10 right-10 w-32 h-32 bg-purple-400/20 rounded-full blur-xl"></div>
+            </div>
+
+            <div className="relative z-10 p-6 flex flex-col items-center text-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 left-2 text-white/80 hover:bg-white/10 hover:text-white"
+                onClick={() => setShowReferralDialog(false)}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="absolute top-2 right-2">
+                <div className="h-6 w-6 rounded-full border border-white/40 flex items-center justify-center text-xs font-bold text-white cursor-pointer">?</div>
+              </div>
+
+              <h2 className="text-2xl font-bold mt-4 mb-1">Refer and Earn!</h2>
+              <p className="text-purple-100 text-xs mb-6">Live in Bangalore, Mumbai, and more</p>
+
+              <div className="mb-8 relative w-48 h-48 flex items-center justify-center">
+                {/* Glowing effect behind image */}
+                <div className="absolute inset-0 bg-yellow-400/20 blur-3xl rounded-full animate-pulse"></div>
+                <img
+                  src="/src/assets/referral-gift-box.png"
+                  alt="Gift Box"
+                  className="w-40 h-40 object-contain drop-shadow-2xl z-10 hover:scale-105 transition-transform duration-500"
+                />
+
+                {/* Floating Coins (CSS Mock) */}
+                <div className="absolute top-0 right-10 text-yellow-300 animate-bounce delay-700">
+                  <div className="w-4 h-4 rounded-full bg-yellow-400 border-2 border-yellow-200 shadow-lg"></div>
+                </div>
+                <div className="absolute bottom-10 left-4 text-yellow-300 animate-bounce delay-300">
+                  <div className="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-200 shadow-lg"></div>
+                </div>
+                <div className="absolute top-1/2 right-0 text-yellow-300 animate-bounce">
+                  <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-200 shadow-lg"></div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 w-full mb-6">
+                <div className="bg-white rounded-2xl p-4 text-center shadow-lg transform transition-transform hover:-translate-y-1">
+                  <p className="text-xs text-gray-500 font-medium mb-1">They get</p>
+                  <p className="text-2xl font-black text-green-600">₹50</p>
+                  <p className="text-[10px] text-gray-400">On Sign Up</p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 text-center shadow-lg transform transition-transform hover:-translate-y-1">
+                  <p className="text-xs text-gray-500 font-medium mb-1">You get</p>
+                  <p className="text-2xl font-black text-green-600">₹150</p>
+                  <p className="text-[10px] text-gray-400">For Referring</p>
+                </div>
+              </div>
+
+              <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-6 rounded-xl shadow-xl shadow-green-900/20 text-lg group">
+                Refer & Earn ₹150
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Service Selector Dialog */}
+      <Dialog open={showServiceSelector} onOpenChange={setShowServiceSelector}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-center">Which service do you need?</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            {[
+              "Everyday Cleaning",
+              "Weekly Cleaning",
+              "Laundry",
+              "Dishwashing",
+              "Bathroom Cleaning",
+              "Kitchen Prep"
+            ].map((service) => (
+              <div
+                key={service}
+                className="flex flex-col items-center justify-center p-4 border rounded-xl hover:border-primary hover:bg-primary/5 cursor-pointer transition-all gap-2 text-center h-32"
+                onClick={() => {
+                  setShowServiceSelector(false);
+                  handleServiceClick(service);
+                }}
+              >
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  {service.includes("Cleaning") ? <Sparkles className="h-6 w-6" /> :
+                    service.includes("Laundry") ? <div className="h-6 w-6 border-2 border-current rounded-sm" /> :
+                      service.includes("Dishwashing") ? <div className="h-6 w-6 rounded-full border-b-2 border-current" /> :
+                        <Star className="h-6 w-6" />}
+                </div>
+                <span className="font-medium text-sm">{service}</span>
+              </div>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
@@ -800,17 +913,17 @@ const Dashboard = () => {
                       {discount}% OFF
                     </Badge>
 
-                    <div className="mb-4">
-                      <h4 className="text-xl font-bold text-slate-800 mb-1">{option.label}</h4>
-                      <div className="flex items-center justify-center gap-2 text-sm">
-                        <span className="font-bold">₹{totalPrice}</span>
-                        <span className="text-muted-foreground line-through text-xs">₹{originalPrice}</span>
+                    <div className="mb-4 space-y-1">
+                      <h4 className="text-2xl font-black text-slate-800">{option.label}</h4>
+                      <div className="flex items-baseline justify-center gap-2">
+                        <span className="font-extrabold text-lg">₹{totalPrice}</span>
+                        <span className="text-muted-foreground line-through text-sm decoration-slate-400">₹{originalPrice}</span>
                       </div>
                     </div>
 
                     <Button
                       variant="outline"
-                      className="w-full border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700 h-8 text-sm font-semibold rounded-lg"
+                      className="w-full border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700 h-9 text-base font-bold rounded-xl border-2"
                       onClick={() => {
                         setShowDurationDialog(false);
                         navigate('/payment', {

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, CreditCard } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle2, Circle, CreditCard, Landmark, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -9,17 +9,42 @@ const Payment = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { toast } = useToast();
-    const [state, setState] = useState<any>(location.state || {});
+    const [state] = useState<any>(location.state || {});
+    const [selectedMethod, setSelectedMethod] = useState("upi");
 
-    // In a real app, you would validate the state here and redirect if missing
-    // useEffect(() => {
-    //  if (!state.service || !state.price) navigate('/dashboard');
-    // }, [state, navigate]);
+    const paymentMethods = [
+        {
+            id: "upi",
+            icon: Smartphone,
+            label: "UPI",
+            description: "Google Pay, PhonePe, Paytm"
+        },
+        {
+            id: "card",
+            icon: CreditCard,
+            label: "Credit / Debit Card",
+            description: "Visa, Mastercard, RuPay"
+        },
+        {
+            id: "netbanking",
+            icon: Landmark,
+            label: "Net Banking",
+            description: "All major banks supported"
+        },
+        {
+            id: "cash",
+            icon: Banknote,
+            label: "Pay After Service",
+            description: "Cash or UPI after service completion"
+        }
+    ];
 
     const handlePayment = () => {
         toast({
-            title: "Payment Successful",
-            description: "Your booking has been confirmed!",
+            title: selectedMethod === 'cash' ? "Booking Confirmed" : "Payment Successful",
+            description: selectedMethod === 'cash'
+                ? "Your service has been booked. You can pay after completion."
+                : "Your transaction was successful and booking is confirmed!",
         });
         setTimeout(() => {
             navigate("/my-bookings");
@@ -62,21 +87,37 @@ const Payment = () => {
 
                 <div className="space-y-4">
                     <h3 className="font-semibold mb-2">Payment Method</h3>
-                    <div className="grid gap-4">
-                        <div className="border rounded-xl p-4 flex items-center gap-4 bg-white cursor-pointer hover:border-primary transition-colors ring-1 ring-primary/5">
-                            <CreditCard className="h-6 w-6 text-primary" />
-                            <div className="flex-1">
-                                <p className="font-medium">Credit / Debit Card</p>
-                                <p className="text-xs text-muted-foreground">Pay securely with your card</p>
+                    <div className="grid gap-3">
+                        {paymentMethods.map((method) => (
+                            <div
+                                key={method.id}
+                                onClick={() => setSelectedMethod(method.id)}
+                                className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all duration-200 ${selectedMethod === method.id
+                                    ? "bg-primary/5 border-primary ring-1 ring-primary"
+                                    : "bg-white hover:border-gray-400"
+                                    }`}
+                            >
+                                <div className={`p-2 rounded-full ${selectedMethod === method.id ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-500"}`}>
+                                    <method.icon className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className={`font-medium ${selectedMethod === method.id ? "text-primary" : "text-gray-900"}`}>
+                                        {method.label}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">{method.description}</p>
+                                </div>
+                                {selectedMethod === method.id ? (
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                ) : (
+                                    <Circle className="h-5 w-5 text-gray-300" />
+                                )}
                             </div>
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                        </div>
-                        {/* More methods can be added here */}
+                        ))}
                     </div>
                 </div>
 
                 <Button className="w-full mt-8" size="lg" onClick={handlePayment}>
-                    Pay ₹{state.price || "0"}
+                    {selectedMethod === 'cash' ? 'Confirm Booking' : `Pay ₹${state.price || "0"}`}
                 </Button>
             </div>
         </div>
