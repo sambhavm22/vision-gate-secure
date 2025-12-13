@@ -47,7 +47,13 @@ const Dashboard = () => {
   const [activeGuidelineService, setActiveGuidelineService] = useState<string>("");
   const [showDurationDialog, setShowDurationDialog] = useState(false);
   const [showServiceSelector, setShowServiceSelector] = useState(false);
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [userLocation, setUserLocation] = useState("Mumbai, India");
+  const [manualLocationInput, setManualLocationInput] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
   const [showReferralDialog, setShowReferralDialog] = useState(false);
+
+
 
   // Default coordinates (Mumbai) for testing geospatial search
   const userLat = 19.0760;
@@ -316,9 +322,12 @@ const Dashboard = () => {
             {!isMobile && <h1 className="text-xl font-bold">HelperHub</h1>}
           </div>
 
-          <div className="flex items-center gap-4 hidden md:flex text-sm text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full">
+          <div
+            className="flex items-center gap-4 hidden md:flex text-sm text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full cursor-pointer hover:bg-secondary/70 transition-colors"
+            onClick={() => setShowLocationDialog(true)}
+          >
             <MapPin className="h-4 w-4 text-primary" />
-            <span>Current Location: <span className="font-medium text-foreground">Mumbai, India</span></span>
+            <span>Current Location: <span className="font-medium text-foreground">{userLocation}</span></span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -348,9 +357,12 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-8">
 
         {/* Mobile Location Display */}
-        <div className="md:hidden flex items-center gap-2 mb-6 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+        <div
+          className="md:hidden flex items-center gap-2 mb-6 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg cursor-pointer hover:bg-secondary/70 active:bg-secondary/80 transition-colors"
+          onClick={() => setShowLocationDialog(true)}
+        >
           <MapPin className="h-4 w-4 text-primary" />
-          <span>Current Location: <span className="font-medium text-foreground">Mumbai, India</span></span>
+          <span>Current Location: <span className="font-medium text-foreground">{userLocation}</span></span>
         </div>
 
         {/* Hero / Offers Section */}
@@ -802,6 +814,100 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Location Selection Dialog */}
+      <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Select Location</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Button
+              className="w-full justify-start h-12 text-base font-normal shadow-sm border"
+              variant="outline"
+              onClick={() => {
+                setIsLocating(true);
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                      try {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+
+                        // User OpenStreetMap Nominatim for free reverse geocoding
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                        const data = await response.json();
+
+                        if (data && data.address) {
+                          const area = data.address.suburb || data.address.neighbourhood || data.address.residential || data.address.road || "Unknown Area";
+                          const city = data.address.city || data.address.town || data.address.village || data.address.state_district || "Unknown City";
+
+                          setUserLocation(`${area}, ${city}`);
+                          toast({ title: "Location Updated", description: `Detected: ${area}, ${city}` });
+                        } else {
+                          // Fallback to coordinates if address not found
+                          setUserLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                          toast({ title: "Location Updated", description: "Could not fetch address details." });
+                        }
+                      } catch (error) {
+                        console.error("Reverse geocoding error:", error);
+                        // Fallback to coordinates on error
+                        setUserLocation(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+                        toast({ title: "Warning", description: "Could not fetch address name." });
+                      } finally {
+                        setShowLocationDialog(false);
+                        setIsLocating(false);
+                      }
+                    },
+                    (error) => {
+                      console.error(error);
+                      toast({ title: "Error", description: "Could not access location.", variant: "destructive" });
+                      setIsLocating(false);
+                    }
+                  );
+                } else {
+                  toast({ title: "Error", description: "Geolocation not supported.", variant: "destructive" });
+                  setIsLocating(false);
+                }
+              }}
+              disabled={isLocating}
+            >
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600">
+                <MapPin className="h-4 w-4" />
+              </div>
+              {isLocating ? "Locating..." : "Use Current Location"}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or enter manually</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter city or area"
+                value={manualLocationInput}
+                onChange={(e) => setManualLocationInput(e.target.value)}
+              />
+              <Button
+                onClick={() => {
+                  if (manualLocationInput.trim()) {
+                    setUserLocation(manualLocationInput);
+                    setShowLocationDialog(false);
+                    toast({ title: "Location Updated", description: `Location set to ${manualLocationInput}` });
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Referral Dialog */}
       <Dialog open={showReferralDialog} onOpenChange={setShowReferralDialog}>
         <DialogContent className="max-w-sm p-0 overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 border-none text-white">
@@ -918,6 +1024,7 @@ const Dashboard = () => {
               </span>
             </div>
 
+            {/* Embla Carousel Container */}
             <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
               {durationOptions.map((option, index) => {
                 // Find the base price for the selected service or default to 200 if not found
@@ -941,7 +1048,7 @@ const Dashboard = () => {
                       <h4 className="text-2xl font-black text-slate-800">{option.label}</h4>
                       <div className="flex items-baseline justify-center gap-2">
                         <span className="font-extrabold text-lg">₹{totalPrice}</span>
-                        <span className="text-muted-foreground line-through text-sm decoration-slate-400">₹{originalPrice}</span>
+                        <span className="text-muted-foreground line-through text-xs decoration-slate-400">₹{originalPrice}</span>
                       </div>
                     </div>
 
