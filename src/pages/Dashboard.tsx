@@ -1,18 +1,19 @@
 import logo from "@/assets/helperhub-logo.png";
-import AIChatbot from "@/components/AIChatbot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/types/supabase";
+import { format } from "date-fns";
 import { ArrowLeft, ArrowRight, Calendar, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { Database } from "@/types/supabase";
 
 type Service = Database['public']['Tables']['services']['Row'];
 type Worker = Database['public']['Tables']['workers_public']['Row'];
@@ -51,6 +52,18 @@ const Dashboard = () => {
   const [userLocation, setUserLocation] = useState("Mumbai, India");
   const [manualLocationInput, setManualLocationInput] = useState("");
   const [isLocating, setIsLocating] = useState(false);
+  const [showCustomDuration, setShowCustomDuration] = useState(false);
+  const [customHours, setCustomHours] = useState<number | "">("");
+
+  // Pre-booking State
+  const [showPrebookDialog, setShowPrebookDialog] = useState(false);
+  const [prebookDate, setPrebookDate] = useState<Date | undefined>(new Date());
+  const [prebookTime, setPrebookTime] = useState("10:00");
+  const [prebookDuration, setPrebookDuration] = useState(2);
+  const [prebookType, setPrebookType] = useState<"single" | "multiple">("single");
+  const [selectedWeekDays, setSelectedWeekDays] = useState<string[]>([]);
+  const [prebookEndDate, setPrebookEndDate] = useState<Date | undefined>(undefined);
+
   const [showReferralDialog, setShowReferralDialog] = useState(false);
 
 
@@ -802,9 +815,7 @@ const Dashboard = () => {
                 onClick={() => {
                   setShowServiceGuidelines(false);
                   setSelectedService(activeGuidelineService);
-                  toast({ title: "Pre-booking", description: "Select an expert to schedule for later." });
-                  const element = document.getElementById('experts-section');
-                  if (element) element.scrollIntoView({ behavior: 'smooth' });
+                  setShowPrebookDialog(true);
                 }}
               >
                 Pre-book
@@ -1015,17 +1026,16 @@ const Dashboard = () => {
 
       {/* Duration Selection Dialog */}
       <Dialog open={showDurationDialog} onOpenChange={setShowDurationDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl">
           <div className="py-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-lg">Select duration of service</h3>
-              <span className="text-xs font-bold text-pink-500 bg-pink-50 px-2 py-1 rounded-full animate-pulse">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-semibold text-xl">Select duration of service</h3>
+              <span className="text-xs font-bold text-pink-500 bg-pink-50 px-3 py-1.5 rounded-full animate-pulse">
                 Arriving in 15 Min
               </span>
             </div>
-
-            {/* Embla Carousel Container */}
-            <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+            {/* Grid Layout Fix */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {durationOptions.map((option, index) => {
                 // Find the base price for the selected service or default to 200 if not found
                 const service = services.find(s => s.name === activeGuidelineService);
@@ -1037,14 +1047,14 @@ const Dashboard = () => {
                 return (
                   <div
                     key={option.label}
-                    className="flex-shrink-0 w-40 snap-center border rounded-2xl p-4 flex flex-col items-center justify-between text-center relative overflow-hidden group hover:border-pink-500 transition-all cursor-pointer bg-white shadow-sm"
+                    className="border rounded-2xl p-4 flex flex-col items-center justify-between text-center relative overflow-hidden group hover:border-pink-500 transition-all cursor-pointer bg-white shadow-sm h-full"
                   >
                     <div className="absolute top-0 inset-x-0 h-1 bg-gray-100 group-hover:bg-pink-500 transition-colors" />
                     <Badge variant="secondary" className="bg-green-100 text-green-700 text-[10px] font-bold mb-3 px-2 py-0.5 rounded-sm">
                       {discount}% OFF
                     </Badge>
 
-                    <div className="mb-4 space-y-1">
+                    <div className="mb-4 space-y-1 w-full">
                       <h4 className="text-2xl font-black text-slate-800">{option.label}</h4>
                       <div className="flex items-baseline justify-center gap-2">
                         <span className="font-extrabold text-lg">₹{totalPrice}</span>
@@ -1075,11 +1085,298 @@ const Dashboard = () => {
                 );
               })}
             </div>
+
+            {/* Custom Duration Section */}
+            <div className="mt-6 pt-4 border-t">
+              <button
+                className="w-full text-center text-sm font-medium text-pink-600 hover:text-pink-700 hover:underline flex items-center justify-center gap-1 mb-4"
+                onClick={() => setShowCustomDuration(!showCustomDuration)}
+              >
+                Need service for longer? Book for a Full Day or Custom hours
+              </button>
+
+              {showCustomDuration && (
+                <div className="bg-slate-50 rounded-xl p-4 animate-in slide-in-from-top-2 fade-in duration-300">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Full Day Card */}
+                    <div
+                      className="bg-white border-2 border-slate-200 hover:border-pink-500 rounded-xl p-3 cursor-pointer transition-all flex flex-col items-center justify-center text-center shadow-sm"
+                      onClick={() => {
+                        const service = services.find(s => s.name === activeGuidelineService);
+                        const basePrice = service ? service.base_price : 200;
+                        const duration = 8;
+                        const totalPrice = Math.round(basePrice * duration * 0.9); // 10% discount for full day
+
+                        setShowDurationDialog(false);
+                        navigate('/payment', {
+                          state: {
+                            service: activeGuidelineService,
+                            service_id: service?.id,
+                            duration: duration,
+                            label: "Full Day (8 Hrs)",
+                            price: totalPrice,
+                            rate: basePrice
+                          }
+                        });
+                      }}
+                    >
+                      <h5 className="font-bold text-lg text-slate-800">Full Day</h5>
+                      <span className="text-xs text-muted-foreground mb-2">8 Hours (+Break)</span>
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 text-[10px] uppercase">10% OFF</Badge>
+                    </div>
+
+                    {/* Custom Hours Input */}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Hrs"
+                          min={4}
+                          max={12}
+                          className="h-10 text-center font-bold"
+                          value={customHours}
+                          onChange={(e) => setCustomHours(Number(e.target.value))}
+                        />
+                        <span className="text-sm font-medium">Hours</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={!customHours || Number(customHours) < 4}
+                        onClick={() => {
+                          if (!customHours) return;
+                          const service = services.find(s => s.name === activeGuidelineService);
+                          const basePrice = service ? service.base_price : 200;
+                          const totalPrice = Math.round(basePrice * Number(customHours));
+
+                          setShowDurationDialog(false);
+                          navigate('/payment', {
+                            state: {
+                              service: activeGuidelineService,
+                              service_id: service?.id,
+                              duration: Number(customHours),
+                              label: `${customHours} Hrs`,
+                              price: totalPrice,
+                              rate: basePrice
+                            }
+                          });
+                        }}
+                      >
+                        Book Custom
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AIChatbot />
+      {/* Pre-booking Dialog */}
+      <Dialog open={showPrebookDialog} onOpenChange={setShowPrebookDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Schedule your Service</DialogTitle>
+          </DialogHeader>
+
+          <Tabs defaultValue="single" value={prebookType} onValueChange={(v) => setPrebookType(v as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="single">Single Service</TabsTrigger>
+              <TabsTrigger value="multiple">Recurring / Multiple</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="single" className="space-y-4 py-4">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="border rounded-lg p-2">
+                  <span className="text-sm font-semibold mb-2 block px-2">Select Date</span>
+                  <CalendarComponent
+                    mode="single"
+                    selected={prebookDate}
+                    onSelect={setPrebookDate}
+                    disabled={(date) => date < new Date()}
+                    className="rounded-md border-0"
+                  />
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Time</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"].map(time => (
+                        <Button
+                          key={time}
+                          variant={prebookTime === time ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setPrebookTime(time)}
+                          className={prebookTime === time ? "bg-pink-600 hover:bg-pink-700" : ""}
+                        >
+                          {time}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Duration (Hours)</label>
+                    <div className="flex items-center gap-4">
+                      <Button variant="outline" size="icon" onClick={() => setPrebookDuration(Math.max(1, prebookDuration - 0.5))}>-</Button>
+                      <span className="font-bold text-lg w-12 text-center">{prebookDuration}</span>
+                      <Button variant="outline" size="icon" onClick={() => setPrebookDuration(Math.min(12, prebookDuration + 0.5))}>+</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selected Schedule Summary */}
+              <div className="bg-pink-50 border border-pink-100 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Selected Schedule</p>
+                    <p className="font-bold text-slate-800">
+                      {prebookDate ? format(prebookDate, "EEE, dd MMM") : "Select Date"} at {prebookTime}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground font-medium">Duration</p>
+                  <p className="font-bold text-slate-800">{prebookDuration} Hrs</p>
+                </div>
+              </div>
+
+              <Button
+                className="w-full mt-4 bg-slate-900 hover:bg-pink-600"
+                onClick={() => {
+                  if (!prebookDate) return;
+                  const dateStr = format(prebookDate, "yyyy-MM-dd");
+
+                  const service = services.find(s => s.name === activeGuidelineService);
+                  // Navigate to logic similar to immediate booking but with Scheduled flag
+                  setShowPrebookDialog(false);
+
+                  // For demo, we might want to go to expert selection or payment. 
+                  // If "Pre-book" means select expert first, we go to experts.
+                  // But usually scheduling implies confirming schedule. 
+                  // Let's assume we go to Payment/Summary with scheduled details.
+
+                  // Calculate dummy price
+                  const basePrice = service ? service.base_price : 200;
+                  const totalPrice = Math.round(basePrice * prebookDuration);
+
+                  navigate('/payment', {
+                    state: {
+                      service: activeGuidelineService,
+                      service_id: service?.id,
+                      duration: prebookDuration,
+                      label: `${prebookDuration} Hrs (Scheduled)`,
+                      price: totalPrice,
+                      rate: basePrice,
+                      scheduledDate: dateStr,
+                      scheduledTime: prebookTime,
+                      isPrebook: true
+                    }
+                  });
+                }}
+              >
+                Proceed with Schedule
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="multiple" className="space-y-4 py-4">
+              <div className="bg-card/50 p-4 rounded-lg border">
+                <h4 className="font-medium mb-4 text-foreground">Select Recurring Days</h4>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
+                    <div
+                      key={day}
+                      className={`h-10 w-10 rounded-full flex items-center justify-center cursor-pointer border transition-all ${selectedWeekDays.includes(day)
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background hover:border-primary/50'
+                        }`}
+                      onClick={() => {
+                        if (selectedWeekDays.includes(day)) {
+                          setSelectedWeekDays(selectedWeekDays.filter(d => d !== day));
+                        } else {
+                          setSelectedWeekDays([...selectedWeekDays, day]);
+                        }
+                      }}
+                    >
+                      {day}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Date Range */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Start Date</label>
+                    <Input type="date" className="bg-background text-foreground" value={prebookDate ? format(prebookDate, 'yyyy-MM-dd') : ''} onChange={e => setPrebookDate(e.target.value ? new Date(e.target.value) : undefined)} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">End Date</label>
+                    <Input type="date" className="bg-background text-foreground" value={prebookEndDate ? format(prebookEndDate, 'yyyy-MM-dd') : ''} onChange={e => setPrebookEndDate(e.target.value ? new Date(e.target.value) : undefined)} />
+                  </div>
+                </div>
+
+                {/* Time Picker */}
+                <div className="space-y-2 mb-6">
+                  <label className="text-sm font-medium text-foreground">Preferred Time</label>
+                  <Input
+                    type="time"
+                    value={prebookTime}
+                    onChange={(e) => setPrebookTime(e.target.value)}
+                    className="bg-background text-foreground"
+                  />
+                </div>
+
+                {/* Duration Selector */}
+                <div className="space-y-2 mb-6">
+                  <label className="text-sm font-medium text-foreground">Duration (Hours)</label>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setPrebookDuration(Math.max(1, prebookDuration - 0.5))}>-</Button>
+                    <span className="font-bold text-lg w-12 text-center">{prebookDuration}</span>
+                    <Button variant="outline" size="icon" onClick={() => setPrebookDuration(Math.min(12, prebookDuration + 0.5))}>+</Button>
+                  </div>
+                </div>
+
+                {/* Schedule Summary */}
+                <div className="bg-muted/50 border border-muted rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Selected Schedule</p>
+                      <p className="font-bold text-foreground">
+                        {selectedWeekDays.length > 0 ? selectedWeekDays.join(', ') : 'Select days'}
+                        {prebookDate ? ` from ${format(prebookDate, 'EEE, dd MMM')}` : ''} to {prebookEndDate ? ` ${format(prebookEndDate, 'EEE, dd MMM')}` : ''} at {prebookTime || 'Select time'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground font-medium">Duration</p>
+                    <p className="font-bold text-foreground">{prebookDuration} Hrs</p>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90"
+                  disabled={selectedWeekDays.length === 0}
+                  onClick={() => {
+                    // Placeholder for recurring booking handling
+                    toast({ title: "Feature Pending", description: "Recurring booking backend is under construction." });
+                  }}
+                >
+                  Configure Recurring Plan
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
     </div >
   );
 };
