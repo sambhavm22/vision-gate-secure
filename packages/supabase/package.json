@@ -11,5 +11,8 @@
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.81.1"
+    },
+    "scripts": {
+        "dev": "echo 'No dev server for shared package'"
     }
 }
