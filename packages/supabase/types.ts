@@ -177,12 +177,13 @@ export interface Database {
             }
             create_booking: {
                 Args: {
-                    customer_uuid: string
+                    customer_uuid?: string
                     service_id_input: number
                     address_id_input: string | null
                     scheduled_at_input: string
                     duration_minutes_input: number
                     preferred_worker_id_input?: string | null
+                    notes_input?: string | null
                 }
                 Returns: string
             }

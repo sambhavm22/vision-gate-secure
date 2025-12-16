@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@vision-gate/supabase/client";
 
 export type CreateBookingParams = {
   serviceId: number;

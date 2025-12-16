@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@vision-gate/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -96,7 +96,7 @@ const Profile = () => {
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
-    
+
     if (error) {
       toast({
         title: "Error",
@@ -183,7 +183,7 @@ const Profile = () => {
 
             <div className="border-t pt-6 space-y-4">
               <h3 className="font-semibold">Update Profile Information</h3>
-              
+
               <div>
                 <Label htmlFor="full_name">Full Name</Label>
                 <Input

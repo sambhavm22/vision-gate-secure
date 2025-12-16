@@ -5,7 +5,7 @@
  * Run this in the browser console to check your setup
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@vision-gate/supabase/client';
 
 export async function testOAuthConfig() {
   console.log('🔍 Testing OAuth Configuration...\n');
@@ -44,7 +44,7 @@ export async function testOAuthConfig() {
       console.error('  ❌ OAuth Error:', error);
       console.error('  Error Code:', error.code);
       console.error('  Error Message:', error.message);
-      
+
       if (error.message.includes('not enabled')) {
         console.log('\n🚨 SOLUTION: Enable Google provider in Supabase Dashboard');
         console.log('   Go to: https://app.supabase.com/project/' + import.meta.env.VITE_SUPABASE_PROJECT_ID + '/auth/providers');
