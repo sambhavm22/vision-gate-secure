@@ -31,6 +31,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@vision-gate/supabase/*": [
+        "../../packages/supabase/*"
       ]
     }
   },

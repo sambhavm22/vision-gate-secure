@@ -14,8 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useServices } from "@/hooks/useServices";
-import { supabase } from "@vision-gate/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { supabase } from "@vision-gate/supabase/client";
 import { Loader2, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -39,6 +39,8 @@ export default function Onboarding() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [locating, setLocating] = useState(false);
 
+    const [addressDisplay, setAddressDisplay] = useState<string | null>(null);
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -46,6 +48,8 @@ export default function Onboarding() {
             bio: "",
             hourly_rate: "",
             service_types: [],
+            location_lat: 0,
+            location_lng: 0,
         },
     });
 
@@ -57,15 +61,58 @@ export default function Onboarding() {
             return;
         }
         navigator.geolocation.getCurrentPosition(
-            (position) => {
-                form.setValue("location_lat", position.coords.latitude);
-                form.setValue("location_lng", position.coords.longitude);
-                setLocating(false);
-                toast({ title: "Location Acquired", description: "Your current location has been set." });
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                form.setValue("location_lat", lat);
+                form.setValue("location_lng", lng);
+
+                try {
+                    // Reverse Geocoding via Nominatim (Free, no key required)
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                    const data = await response.json();
+
+                    if (data && data.address) {
+                        const area = data.address.suburb || data.address.neighbourhood || data.address.road || "Unknown Area";
+                        const city = data.address.city || data.address.town || data.address.village || data.address.state_district || "";
+                        const formattedAddress = city ? `${area}, ${city}` : area;
+                        setAddressDisplay(formattedAddress);
+                        toast({ title: "Location Acquired", description: `Set to: ${formattedAddress}` });
+                    } else {
+                        setAddressDisplay(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                        toast({ title: "Location Acquired", description: "Your current location has been set." });
+                    }
+                } catch (error) {
+                    console.error("Geocoding error:", error);
+                    // Fallback to coordinates
+                    setAddressDisplay(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                    toast({ title: "Location Acquired", description: "Your current location has been set." });
+                } finally {
+                    setLocating(false);
+                }
             },
             (error) => {
                 setLocating(false);
-                toast({ variant: "destructive", title: "Error", description: error.message });
+                let errorMessage = "Unknown error";
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = "User denied the request for Geolocation. Please enable location permissions.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = "Location information is unavailable.";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = "The request to get user location timed out.";
+                        break;
+                    default:
+                        errorMessage = error.message;
+                }
+                toast({ variant: "destructive", title: "Location Error", description: errorMessage });
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
             }
         );
     };
@@ -85,14 +132,6 @@ export default function Onboarding() {
                 bio: values.bio,
                 hourly_rate: Number(values.hourly_rate),
                 service_types: values.service_types,
-                // PostGIS insert requires raw query or text representation if cast properly
-                // Supabase-js handles GeoJSON or text usually if postgis is set up. 
-                // Best approach: Use a raw query or ensure the column accepts WKT.
-                // Let's try passing it as GeoJSON-like object if Supabase supports it, OR utilize a string cast.
-                // Common issue: Supabase client might send as string. 
-                // We might need to use `st_point` via RPC or just pass string and hope content-type allows.
-                // Actually, the `location` column is `geography(Point, 4326)`.
-                // Passing WKT `POINT(lng lat)` works if the driver handles it.
                 location: location,
                 is_verified: false, // Default unverified
                 rating: 5.0, // Start with 5 stars
@@ -199,11 +238,11 @@ export default function Onboarding() {
                                 <div className="flex items-center gap-4">
                                     <Button type="button" variant="outline" onClick={getLocation} disabled={locating}>
                                         {locating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-                                        {form.watch("location_lat") ? "Update Location" : "Get Current Location"}
+                                        {addressDisplay ? "Update Location" : "Get Current Location"}
                                     </Button>
-                                    {form.watch("location_lat") && (
-                                        <span className="text-sm text-green-600">
-                                            Location set ({form.watch("location_lat").toFixed(4)}, {form.watch("location_lng").toFixed(4)})
+                                    {addressDisplay && (
+                                        <span className="text-sm text-green-600 font-medium">
+                                            {addressDisplay}
                                         </span>
                                     )}
                                 </div>

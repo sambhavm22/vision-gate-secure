@@ -1,6 +1,6 @@
-import { supabase } from "@vision-gate/supabase/client";
 import type { WorkerProfile } from "@/types";
 import { type Session, type User } from "@supabase/supabase-js";
+import { supabase } from "@vision-gate/supabase/client";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
 interface AuthContextType {
@@ -21,15 +21,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchWorkerProfile(session.user.id);
-            } else {
+        const initAuth = async () => {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+
+                setSession(session);
+                setUser(session?.user ?? null);
+                if (session?.user) {
+                    await fetchWorkerProfile(session.user.id);
+                } else {
+                    setIsLoading(false);
+                }
+            } catch (error) {
+                console.error("Error initializing auth:", error);
                 setIsLoading(false);
             }
-        });
+        };
+
+        initAuth();
 
         const {
             data: { subscription },

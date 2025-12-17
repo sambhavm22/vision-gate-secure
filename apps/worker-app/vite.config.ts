@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@vision-gate/supabase": path.resolve(__dirname, "../../packages/supabase"),
     },
   },
 })
