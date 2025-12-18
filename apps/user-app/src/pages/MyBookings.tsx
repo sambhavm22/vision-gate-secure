@@ -31,7 +31,35 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBookings();
+    let channel: any;
+
+    const setupRealtime = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      fetchBookings(); // Initial load
+
+      channel = supabase.channel('my-bookings-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'bookings',
+            filter: `customer_id=eq.${session.user.id}`
+          },
+          () => {
+            fetchBookings();
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchBookings = async () => {

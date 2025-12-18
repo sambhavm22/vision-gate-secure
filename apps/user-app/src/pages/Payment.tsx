@@ -63,11 +63,11 @@ const Payment = () => {
             const { data: bookingId, error } = await supabase.rpc('create_booking', {
                 customer_uuid: session.user.id,
                 service_id_input: state.service_id || 1, // Fallback to 1 if not passed
-                address_id_input: null, // Address selection not implemented in this flow yet
+                address_id_input: state.address?.id || null,
                 scheduled_at_input: new Date(Date.now() + 15 * 60000).toISOString(), // "Arriving in 15 Min"
                 duration_minutes_input: (state.duration || 1) * 60,
                 preferred_worker_id_input: null
-            });
+            } as any);
 
             if (error) throw error;
 
@@ -118,6 +118,15 @@ const Payment = () => {
                             <span className="text-muted-foreground">Rate</span>
                             <span>{state.rate ? `₹${state.rate}/hr` : "Standard Rate"}</span>
                         </div>
+                        {state.address && (
+                            <div className="flex justify-between items-start pb-2 border-b">
+                                <span className="text-muted-foreground">Location</span>
+                                <span className="text-right text-sm font-medium w-1/2">
+                                    {state.address.label ? <span className="font-bold block text-xs text-primary mb-0.5">{state.address.label}</span> : null}
+                                    {state.address.address_line1}, {state.address.city}
+                                </span>
+                            </div>
+                        )}
 
                         <div className="flex justify-between items-center pt-2 text-lg font-bold">
                             <span>Total</span>

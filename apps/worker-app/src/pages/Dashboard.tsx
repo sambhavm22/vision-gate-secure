@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
-import { Briefcase, CalendarClock, Loader2, MapPinOff, RefreshCw, Star, TrendingUp } from "lucide-react";
+import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, RefreshCw, Star, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function Dashboard() {
@@ -15,6 +15,48 @@ export default function Dashboard() {
     const [myBookings, setMyBookings] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
+    const [currentLocationName, setCurrentLocationName] = useState("Locating...");
+    const [isLocating, setIsLocating] = useState(false);
+
+    useEffect(() => {
+        detectLocation();
+    }, []);
+
+    const detectLocation = () => {
+        setIsLocating(true);
+        if (!navigator.geolocation) {
+            setCurrentLocationName("Location not supported");
+            setIsLocating(false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                try {
+                    // Reverse Geocoding
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const data = await response.json();
+                    const area = data.address.suburb || data.address.neighbourhood || data.address.city_district;
+                    const city = data.address.city || data.address.town || data.address.village;
+                    setCurrentLocationName(`${area ? area + ", " : ""}${city || "Unknown Location"}`);
+
+                    // Optional: Update worker location in DB if needed (not implemented here to avoid spamming writes)
+                } catch (error) {
+                    console.error("Geocoding failed:", error);
+                    setCurrentLocationName(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                } finally {
+                    setIsLocating(false);
+                }
+            },
+            (error) => {
+                console.error("Geolocation error:", error);
+                setCurrentLocationName("Mumbai (Default)"); // Fallback
+                setIsLocating(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
 
     const fetchBookings = async () => {
         if (!workerProfile) return;
@@ -53,6 +95,24 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchBookings();
+
+        // Realtime Subscription
+        const channel = supabase
+            .channel('public:bookings')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'bookings' },
+                (payload) => {
+                    console.log('Realtime update received:', payload);
+                    // Refresh bookings on any change (simple invalidation strategy)
+                    fetchBookings();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [workerProfile]);
 
     const handleAccept = async (bookingId: string) => {
@@ -120,6 +180,14 @@ export default function Dashboard() {
                     </h1>
                 </div>
                 <div className="flex items-center gap-4">
+                    <div
+                        className="hidden md:flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                        onClick={detectLocation}
+                        title="Click to refresh location"
+                    >
+                        <MapPin className={`h-4 w-4 ${isLocating ? 'animate-pulse' : ''}`} />
+                        <span>Current Location: {currentLocationName}</span>
+                    </div>
                     <span className="text-sm font-medium text-gray-700 hidden sm:inline-block">
                         {workerProfile.full_name}
                     </span>
@@ -132,11 +200,19 @@ export default function Dashboard() {
             <div className="container mx-auto max-w-5xl py-8 px-4 space-y-8">
                 {/* Welcome Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
+                    <div className="w-full md:w-auto">
                         <h2 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h2>
                         <p className="text-gray-500 mt-1">
                             Welcome back! Here's what's happening in your area.
                         </p>
+                        {/* Mobile Location */}
+                        <div
+                            className="mt-4 md:hidden flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200 w-fit cursor-pointer"
+                            onClick={detectLocation}
+                        >
+                            <MapPin className={`h-4 w-4 ${isLocating ? 'animate-pulse' : ''}`} />
+                            <span>Current Location: {currentLocationName}</span>
+                        </div>
                     </div>
                     <Button onClick={fetchBookings} disabled={isLoading} className="shadow-sm">
                         <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -215,11 +291,11 @@ export default function Dashboard() {
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
                                 {marketBookings.map(booking => (
                                     <BookingCard
-                                        key={booking.id}
+                                        key={booking.booking_id || booking.id}
                                         booking={booking}
                                         type="marketplace"
                                         onAccept={handleAccept}
-                                        isProcessing={processingId === booking.id}
+                                        isProcessing={processingId === (booking.booking_id || booking.id)}
                                     />
                                 ))}
                             </div>

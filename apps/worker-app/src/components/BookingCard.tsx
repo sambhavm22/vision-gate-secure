@@ -64,13 +64,13 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
                 {isMarket && onAccept && (
-                    <Button onClick={() => onAccept(booking.id)} disabled={isProcessing}>
+                    <Button onClick={() => onAccept(booking.booking_id || booking.id)} disabled={isProcessing}>
                         {isProcessing ? "Accepting..." : "Accept Job"}
                         <CheckCircle className="ml-2 h-4 w-4" />
                     </Button>
                 )}
                 {!isMarket && onCancel && (
-                    <Button variant="destructive" size="sm" onClick={() => onCancel(booking.id)} disabled={isProcessing}>
+                    <Button variant="destructive" size="sm" onClick={() => onCancel(booking.booking_id || booking.id)} disabled={isProcessing}>
                         Cancel
                         <XCircle className="ml-2 h-4 w-4" />
                     </Button>

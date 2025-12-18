@@ -120,6 +120,7 @@ export type Database = {
                     duration_minutes: number | null
                     total_amount: number | null
                     notes: string | null
+                    location: any | null // Geography Point
                     created_at: string
                     updated_at: string
                 }
@@ -134,6 +135,7 @@ export type Database = {
                     duration_minutes?: number | null
                     total_amount?: number | null
                     notes?: string | null
+                    location?: any | null // Geography Point
                     created_at?: string
                     updated_at?: string
                 }
@@ -148,6 +150,7 @@ export type Database = {
                     duration_minutes?: number | null
                     total_amount?: number | null
                     notes?: string | null
+                    location?: any | null // Geography Point
                     created_at?: string
                     updated_at?: string
                 }
@@ -184,8 +187,34 @@ export type Database = {
                     duration_minutes_input: number
                     preferred_worker_id_input?: string | null
                     notes_input?: string | null
+                    location_input?: any | null // Geography Point
                 }
                 Returns: string
+            }
+            get_market_bookings: {
+                Args: {
+                    p_worker_id: string
+                    p_radius_meters?: number
+                }
+                Returns: {
+                    id: string
+                    service_name: string
+                    status: string
+                    total_amount: number
+                    scheduled_at: string
+                    duration_minutes: number
+                    address_line1: string
+                    city: string
+                    dist_meters: number
+                    notes: string
+                }[]
+            }
+            accept_booking: {
+                Args: {
+                    p_booking_id: string
+                    p_worker_id: string
+                }
+                Returns: void
             }
         }
         Enums: {

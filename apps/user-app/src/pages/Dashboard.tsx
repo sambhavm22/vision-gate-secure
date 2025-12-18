@@ -1,4 +1,5 @@
 import logo from "@/assets/helperhub-logo.png";
+import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -63,6 +64,10 @@ const Dashboard = () => {
   const [prebookType, setPrebookType] = useState<"single" | "multiple">("single");
   const [selectedWeekDays, setSelectedWeekDays] = useState<string[]>([]);
   const [prebookEndDate, setPrebookEndDate] = useState<Date | undefined>(undefined);
+
+  // Address Selection State
+  const [showAddressSelection, setShowAddressSelection] = useState(false);
+  const [bookingDraft, setBookingDraft] = useState<any>(null);
 
   const [showReferralDialog, setShowReferralDialog] = useState(false);
 
@@ -273,12 +278,12 @@ const Dashboard = () => {
         // Wait, schema enforces address_id? "address_id uuid references public.addresses(id)" - nullable?
         // Checking schema: "address_id uuid references public.addresses(id)" is NOT NULL? No, it's nullable in my create table script.
 
-        // Storing location in notes since `bookings` table doesn't have `location` text column, only `address_id`
+        // Storing location in notes for text address, and `location` column for spatial queries
         notes: `Location: ${bookingLocation}`,
-
-        total_amount: selectedHelper.hourly_rate,
-        status: "requested",
-      });
+        location: `POINT(${userLng} ${userLat})`,
+        total_amount: 0, // Pending calculation
+        status: 'requested',
+      } as any);
 
       if (error) throw error;
 
@@ -840,10 +845,14 @@ const Dashboard = () => {
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
                     async (position) => {
-                      try {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
+                      const lat = position.coords.latitude;
+                      const lng = position.coords.longitude;
 
+                      // Immediate feedback with coords
+                      setUserLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                      toast({ title: "Coordinates Found", description: "Fetching address details..." });
+
+                      try {
                         // User OpenStreetMap Nominatim for free reverse geocoding
                         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
                         const data = await response.json();
@@ -854,16 +863,11 @@ const Dashboard = () => {
 
                           setUserLocation(`${area}, ${city}`);
                           toast({ title: "Location Updated", description: `Detected: ${area}, ${city}` });
-                        } else {
-                          // Fallback to coordinates if address not found
-                          setUserLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                          toast({ title: "Location Updated", description: "Could not fetch address details." });
                         }
                       } catch (error) {
                         console.error("Reverse geocoding error:", error);
-                        // Fallback to coordinates on error
-                        setUserLocation(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
-                        toast({ title: "Warning", description: "Could not fetch address name." });
+                        // Keep coordinates (already set)
+                        toast({ title: "Address Lookup Failed", description: "Using coordinates instead." });
                       } finally {
                         setShowLocationDialog(false);
                         setIsLocating(false);
@@ -871,9 +875,10 @@ const Dashboard = () => {
                     },
                     (error) => {
                       console.error(error);
-                      toast({ title: "Error", description: "Could not access location.", variant: "destructive" });
+                      toast({ title: "Error", description: "Could not access location. Please enable permissions.", variant: "destructive" });
                       setIsLocating(false);
-                    }
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
                   );
                 } else {
                   toast({ title: "Error", description: "Geolocation not supported.", variant: "destructive" });
@@ -1067,16 +1072,15 @@ const Dashboard = () => {
                       className="w-full border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700 h-9 text-base font-bold rounded-xl border-2"
                       onClick={() => {
                         setShowDurationDialog(false);
-                        navigate('/payment', {
-                          state: {
-                            service: activeGuidelineService,
-                            service_id: service?.id, // Pass ID for backend
-                            duration: option.hours,
-                            label: option.label,
-                            price: totalPrice,
-                            rate: basePrice
-                          }
+                        setBookingDraft({
+                          service: activeGuidelineService,
+                          service_id: service?.id,
+                          duration: option.hours,
+                          label: option.label,
+                          price: totalPrice,
+                          rate: basePrice
                         });
+                        setShowAddressSelection(true);
                       }}
                     >
                       Book
@@ -1108,16 +1112,15 @@ const Dashboard = () => {
                         const totalPrice = Math.round(basePrice * duration * 0.9); // 10% discount for full day
 
                         setShowDurationDialog(false);
-                        navigate('/payment', {
-                          state: {
-                            service: activeGuidelineService,
-                            service_id: service?.id,
-                            duration: duration,
-                            label: "Full Day (8 Hrs)",
-                            price: totalPrice,
-                            rate: basePrice
-                          }
+                        setBookingDraft({
+                          service: activeGuidelineService,
+                          service_id: service?.id,
+                          duration: duration,
+                          label: "Full Day (8 Hrs)",
+                          price: totalPrice,
+                          rate: basePrice
                         });
+                        setShowAddressSelection(true);
                       }}
                     >
                       <h5 className="font-bold text-lg text-slate-800">Full Day</h5>
@@ -1149,16 +1152,15 @@ const Dashboard = () => {
                           const totalPrice = Math.round(basePrice * Number(customHours));
 
                           setShowDurationDialog(false);
-                          navigate('/payment', {
-                            state: {
-                              service: activeGuidelineService,
-                              service_id: service?.id,
-                              duration: Number(customHours),
-                              label: `${customHours} Hrs`,
-                              price: totalPrice,
-                              rate: basePrice
-                            }
+                          setBookingDraft({
+                            service: activeGuidelineService,
+                            service_id: service?.id,
+                            duration: Number(customHours),
+                            label: `${customHours} Hrs`,
+                            price: totalPrice,
+                            rate: basePrice
                           });
+                          setShowAddressSelection(true);
                         }}
                       >
                         Book Custom
@@ -1376,6 +1378,21 @@ const Dashboard = () => {
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* Address Selection Dialog */}
+      <AddressSelectionDialog
+        open={showAddressSelection}
+        onOpenChange={setShowAddressSelection}
+        onSelect={(address) => {
+          setShowAddressSelection(false);
+          navigate('/payment', {
+            state: {
+              ...bookingDraft,
+              address: address
+            }
+          });
+        }}
+      />
 
     </div >
   );
