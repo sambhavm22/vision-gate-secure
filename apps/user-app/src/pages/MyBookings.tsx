@@ -1,8 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@vision-gate/supabase/client";
+import { format } from "date-fns";
 import { ArrowLeft, Clock, MapPin, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -14,13 +16,20 @@ interface Booking {
   };
   scheduled_at: string;
   status: string;
-  // location: string; // Not in DB yet, stored in notes
   notes: string | null;
   total_amount: number;
+  duration_minutes: number;
   worker?: {
     full_name: string;
-    // phone: string; // Not in public schema yet? Check workers_public.
     rating: number;
+    profile_image_url?: string;
+  } | null;
+  address?: {
+    address_line1: string;
+    address_line2: string | null;
+    city: string | null;
+    postal_code: string | null;
+    label: string | null;
   } | null;
 }
 
@@ -29,6 +38,7 @@ const MyBookings = () => {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     let channel: any;
@@ -78,16 +88,25 @@ const MyBookings = () => {
           scheduled_at,
           status,
           total_amount,
+          duration_minutes,
           notes,
           service:service_id (
             name
           ),
           worker:worker_id (
             full_name,
-            rating
+            rating,
+            profile_image_url
+          ),
+          address:address_id (
+            address_line1,
+            address_line2,
+            city,
+            postal_code,
+            label
           )
         `)
-        .eq("customer_id", session.user.id) // Correct column name
+        .eq("customer_id", session.user.id)
         .order("scheduled_at", { ascending: false });
 
       if (error) throw error;
@@ -158,7 +177,11 @@ const MyBookings = () => {
         ) : (
           <div className="space-y-4">
             {bookings.map((booking) => (
-              <Card key={booking.id} className="hover:shadow-lg transition-shadow">
+              <Card
+                key={booking.id}
+                className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-primary"
+                onClick={() => setSelectedBooking(booking)}
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-xl">{booking.service?.name || 'Service Request'}</CardTitle>
@@ -221,6 +244,98 @@ const MyBookings = () => {
           </div>
         )}
       </div>
+
+      {/* Booking Details Dialog */}
+      <Dialog open={!!selectedBooking} onOpenChange={(open) => !open && setSelectedBooking(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Booking Details</DialogTitle>
+          </DialogHeader>
+
+          {selectedBooking && (
+            <div className="space-y-6 pt-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-semibold">{selectedBooking.service?.name}</h3>
+                  <p className="text-sm text-muted-foreground">Booking ID: {selectedBooking.id.slice(0, 8)}...</p>
+                </div>
+                <Badge variant={getStatusVariant(selectedBooking.status) as any} className="capitalize">
+                  {selectedBooking.status.replace('_', ' ')}
+                </Badge>
+              </div>
+
+              <div className="space-y-4 bg-muted/30 p-4 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <Clock className="h-5 w-5 text-primary mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Scheduled For</p>
+                    <p className="font-medium">{format(new Date(selectedBooking.scheduled_at), "PPP p")}</p>
+                    <p className="text-sm text-muted-foreground">{selectedBooking.duration_minutes} Minutes Duration</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-5 w-5 text-primary mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Service Location</p>
+                    {selectedBooking.address ? (
+                      <>
+                        <p className="font-semibold text-primary">{selectedBooking.address.label || 'Home'}</p>
+                        <p className="font-medium">{selectedBooking.address.address_line1}</p>
+                        {selectedBooking.address.address_line2 && <p className="text-sm">{selectedBooking.address.address_line2}</p>}
+                        <p className="text-sm text-muted-foreground">
+                          {selectedBooking.address.city}, {selectedBooking.address.postal_code}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-medium italic text-muted-foreground">Location details not available in record</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedBooking.worker ? (
+                <div className="border rounded-xl p-4 flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                    {selectedBooking.worker.profile_image_url ? (
+                      <img src={selectedBooking.worker.profile_image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="h-6 w-6 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs uppercase text-muted-foreground font-bold">Assigned Helper</p>
+                    <p className="font-bold">{selectedBooking.worker.full_name}</p>
+                    <div className="flex items-center gap-1 text-sm text-yellow-600">
+                      <span className="font-bold">{selectedBooking.worker.rating}</span> ★
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3">
+                  <div className="animate-pulse h-4 w-4 bg-blue-400 rounded-full" />
+                  <p className="text-blue-700 text-sm font-medium">Looking for a nearby helper...</p>
+                </div>
+              )}
+
+              {selectedBooking.notes && (
+                <div className="space-y-1">
+                  <p className="text-xs uppercase text-muted-foreground font-bold">Additional Notes</p>
+                  <p className="text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 italic">"{selectedBooking.notes}"</p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase text-muted-foreground font-bold">Total Payable</p>
+                  <p className="text-2xl font-black text-primary">₹{selectedBooking.total_amount}</p>
+                </div>
+                <Button onClick={() => setSelectedBooking(null)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

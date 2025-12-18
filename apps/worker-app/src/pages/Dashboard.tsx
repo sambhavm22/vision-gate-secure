@@ -7,9 +7,11 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, RefreshCw, Star, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
     const { workerProfile } = useAuth();
+    const navigate = useNavigate();
     const { toast } = useToast();
     const [marketBookings, setMarketBookings] = useState<any[]>([]);
     const [myBookings, setMyBookings] = useState<any[]>([]);
@@ -41,7 +43,19 @@ export default function Dashboard() {
                     const city = data.address.city || data.address.town || data.address.village;
                     setCurrentLocationName(`${area ? area + ", " : ""}${city || "Unknown Location"}`);
 
-                    // Optional: Update worker location in DB if needed (not implemented here to avoid spamming writes)
+                    // Update worker location in DB
+                    if (workerProfile) {
+                        const { error } = await supabase
+                            .from("workers_public")
+                            .update({
+                                location: `POINT(${longitude} ${latitude})`
+                            } as any)
+                            .eq("id", workerProfile.id);
+
+                        if (error) {
+                            console.error("Failed to update worker location:", error);
+                        }
+                    }
                 } catch (error) {
                     console.error("Geocoding failed:", error);
                     setCurrentLocationName(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
@@ -140,17 +154,11 @@ export default function Dashboard() {
         }
     };
 
-    // Simplistic Cancel (Not full RPC logic as requested to verify MVP)
-    // For MVP, allow cancel if status is accepted/matched.
-    // Ideally, this should reset status to 'requested' and remove worker_id?
     const handleCancel = async (bookingId: string) => {
         if (!workerProfile) return;
         if (!confirm("Are you sure you want to cancel this booking?")) return;
         setProcessingId(bookingId);
         try {
-            // Logic: Update to cancelled or release it back to pool?
-            // Requirement: "Worker must be able to cancel".
-            // Let's release it back to pool ('requested', worker_id = null)
             const { error } = await supabase
                 .from("bookings")
                 // @ts-ignore
@@ -188,10 +196,13 @@ export default function Dashboard() {
                         <MapPin className={`h-4 w-4 ${isLocating ? 'animate-pulse' : ''}`} />
                         <span>Current Location: {currentLocationName}</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-700 hidden sm:inline-block">
+                    <div className="text-sm font-medium text-gray-700 hidden sm:inline-block">
                         {workerProfile.full_name}
-                    </span>
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                    </div>
+                    <div
+                        className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold cursor-pointer hover:bg-primary/20 transition-colors"
+                        onClick={() => navigate("/profile")}
+                    >
                         {workerProfile.full_name?.charAt(0)}
                     </div>
                 </div>

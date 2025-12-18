@@ -5,27 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@vision-gate/supabase/client";
-import { Briefcase, Home, MapPin, Plus } from "lucide-react";
+import { ArrowRight, Briefcase, Home, MapPin, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface Address {
     id: string;
     address_line1: string;
+    address_line2?: string;
     city: string;
-    state: string;
     postal_code: string;
-    country: string;
-    is_default?: boolean;
     label?: string; // e.g. Home, Work
+    location?: any;
+    is_default?: boolean;
+    created_at?: string;
 }
 
 interface AddressSelectionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSelect: (address: Address) => void;
+    currentLocation?: string;
 }
 
-export function AddressSelectionDialog({ open, onOpenChange, onSelect }: AddressSelectionDialogProps) {
+export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLocation }: AddressSelectionDialogProps) {
     const { toast } = useToast();
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [loading, setLoading] = useState(false);
@@ -35,7 +37,6 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect }: Address
     const [newAddress, setNewAddress] = useState({
         address_line1: "",
         city: "",
-        state: "",
         postal_code: "",
         label: "Home"
     });
@@ -60,7 +61,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect }: Address
             const { data, error } = await supabase
                 .from("addresses" as any)
                 .select("*")
-                .eq("user_id", user.id)
+                .eq("customer_id", user.id)
                 .order("created_at", { ascending: false });
 
             if (error) throw error;
@@ -89,15 +90,10 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect }: Address
             }
 
             const addressToSave = {
-                user_id: user.id,
+                customer_id: user.id,
                 ...newAddress,
-                // country: "India", // Removed as schema doesn't support it
-                // state: newAddress.state, // Removed as schema doesn't support it
                 created_at: new Date().toISOString()
             };
-
-            // Remove state from the object being inserted if spread included it
-            delete (addressToSave as any).state;
 
             const { data, error } = await supabase
                 .from("addresses" as any)
@@ -143,7 +139,6 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect }: Address
                                 ...prev,
                                 address_line1: area,
                                 city: city,
-                                state: state,
                                 postal_code: postcode
                             }));
 
@@ -176,13 +171,52 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect }: Address
 
                 {view === "list" ? (
                     <div className="space-y-4 pt-2">
+                        {/* Current Location Suggestion */}
+                        {currentLocation && (
+                            <div
+                                className="border-2 border-primary/20 bg-primary/5 rounded-xl p-4 cursor-pointer hover:border-primary transition-all relative overflow-hidden group"
+                                onClick={() => {
+                                    // Handle selection of current location
+                                    // To get an ID, we might need to save it, or Payment page needs to handle it.
+                                    // For now, let's trigger the "Add" view with pre-filled data if they click this,
+                                    // or just pass a temporary object if Payment can handle null ID.
+                                    // Actually, let's pre-fill the Add form and switch view for confirmation.
+                                    setNewAddress(prev => ({
+                                        ...prev,
+                                        address_line1: currentLocation.split(',')[0],
+                                        city: currentLocation.split(',')[1]?.trim() || ""
+                                    }));
+                                    setView("add");
+                                    toast({ title: "Confirm Address", description: "Please confirm your current location details." });
+                                }}
+                            >
+                                <div className="absolute top-0 right-0 p-2">
+                                    <Badge variant="default" className="text-[10px] bg-primary">Suggested</Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                        <MapPin className="h-5 w-5 animate-pulse" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Use Current Location</p>
+                                        <p className="text-sm font-medium line-clamp-1">{currentLocation}</p>
+                                    </div>
+                                    <ArrowRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                            </div>
+                        )}
 
-                        {/* Add New Button */}
+                        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                            <span className="h-px flex-1 bg-border"></span>
+                            <span>Saved Addresses</span>
+                            <span className="h-px flex-1 bg-border"></span>
+                        </div>
+
                         <Button
                             variant="outline"
                             className="w-full border-dashed border-primary/50 text-primary hover:bg-primary/5 h-12"
                             onClick={() => {
-                                setNewAddress({ address_line1: "", city: "", state: "", postal_code: "", label: "Home" });
+                                setNewAddress({ address_line1: "", city: "", postal_code: "", label: "Home" });
                                 setView("add");
                             }}
                         >
@@ -217,7 +251,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect }: Address
                                                     {addr.is_default && <Badge variant="secondary" className="text-[10px] h-5">Default</Badge>}
                                                 </div>
                                                 <p className="text-sm text-slate-600 line-clamp-2">{addr.address_line1}, {addr.city}</p>
-                                                <p className="text-xs text-slate-400 mt-1">{addr.state} {addr.postal_code}</p>
+                                                <p className="text-xs text-slate-400 mt-1">{addr.postal_code}</p>
                                             </div>
                                             <div className="self-center">
                                                 <div className="h-4 w-4 rounded-full border-2 border-slate-300 group-hover:border-primary" />
@@ -289,15 +323,6 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect }: Address
                                         onChange={e => setNewAddress({ ...newAddress, postal_code: e.target.value })}
                                     />
                                 </div>
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="state">State</Label>
-                                <Input
-                                    id="state"
-                                    placeholder="State"
-                                    value={newAddress.state}
-                                    onChange={e => setNewAddress({ ...newAddress, state: e.target.value })}
-                                />
                             </div>
                         </div>
 

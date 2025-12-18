@@ -33,7 +33,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedService, setSelectedService] = useState<string>("all");
   const [services, setServices] = useState<Service[]>([]);
@@ -50,7 +50,7 @@ const Dashboard = () => {
   const [showDurationDialog, setShowDurationDialog] = useState(false);
   const [showServiceSelector, setShowServiceSelector] = useState(false);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
-  const [userLocation, setUserLocation] = useState("Mumbai, India");
+  const [userLocation, setUserLocation] = useState(() => localStorage.getItem("userLocation") || "Mumbai, India");
   const [manualLocationInput, setManualLocationInput] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [showCustomDuration, setShowCustomDuration] = useState(false);
@@ -323,12 +323,17 @@ const Dashboard = () => {
   }, [helpers, searchQuery, selectedService]);
 
   useEffect(() => {
+    localStorage.setItem("darkMode", darkMode.toString());
     if (darkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem("userLocation", userLocation);
+  }, [userLocation]);
 
   return (
     <div className="min-h-screen bg-background transition-colors">
@@ -1383,6 +1388,7 @@ const Dashboard = () => {
       <AddressSelectionDialog
         open={showAddressSelection}
         onOpenChange={setShowAddressSelection}
+        currentLocation={userLocation}
         onSelect={(address) => {
           setShowAddressSelection(false);
           navigate('/payment', {
