@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
-import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, RefreshCw, Star, TrendingUp } from "lucide-react";
+import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -20,9 +20,22 @@ export default function Dashboard() {
     const [currentLocationName, setCurrentLocationName] = useState("Locating...");
     const [isLocating, setIsLocating] = useState(false);
 
+    const [darkMode, setDarkMode] = useState(() => {
+        return localStorage.getItem("worker-darkMode") === "true";
+    });
+
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
+        localStorage.setItem("worker-darkMode", darkMode.toString());
+    }, [darkMode]);
+
     useEffect(() => {
         detectLocation();
-    }, []);
+    }, [workerProfile]);
 
     const detectLocation = () => {
         setIsLocating(true);
@@ -180,8 +193,8 @@ export default function Dashboard() {
     if (!workerProfile) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50/50">
-            <div className="bg-white border-b sticky top-0 z-10 px-6 py-4 flex justify-between items-center shadow-sm">
+        <div className="min-h-screen bg-background text-foreground">
+            <div className="bg-card border-b sticky top-0 z-10 px-6 py-4 flex justify-between items-center shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
                         HelperHub
@@ -189,16 +202,25 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center gap-4">
                     <div
-                        className="hidden md:flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+                        className="hidden md:flex items-center gap-2 text-sm text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 px-3 py-1.5 rounded-full border border-green-200 dark:border-green-800 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
                         onClick={detectLocation}
                         title="Click to refresh location"
                     >
                         <MapPin className={`h-4 w-4 ${isLocating ? 'animate-pulse' : ''}`} />
                         <span>Current Location: {currentLocationName}</span>
                     </div>
-                    <div className="text-sm font-medium text-gray-700 hidden sm:inline-block">
+                    <div className="text-sm font-medium text-gray-700 hidden sm:inline-block dark:text-gray-200">
                         {workerProfile.full_name}
                     </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDarkMode(!darkMode)}
+                        className="rounded-full h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                        title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    >
+                        {darkMode ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-slate-700" />}
+                    </Button>
                     <div
                         className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold cursor-pointer hover:bg-primary/20 transition-colors"
                         onClick={() => navigate("/profile")}
@@ -212,13 +234,13 @@ export default function Dashboard() {
                 {/* Welcome Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="w-full md:w-auto">
-                        <h2 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h2>
-                        <p className="text-gray-500 mt-1">
+                        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+                        <p className="text-muted-foreground mt-1">
                             Welcome back! Here's what's happening in your area.
                         </p>
                         {/* Mobile Location */}
                         <div
-                            className="mt-4 md:hidden flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200 w-fit cursor-pointer"
+                            className="mt-4 md:hidden flex items-center gap-2 text-sm text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 px-3 py-1.5 rounded-full border border-green-200 dark:border-green-800 w-fit cursor-pointer"
                             onClick={detectLocation}
                         >
                             <MapPin className={`h-4 w-4 ${isLocating ? 'animate-pulse' : ''}`} />
@@ -259,11 +281,11 @@ export default function Dashboard() {
                             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">Online</div>
+                            <div className="text-2xl font-bold text-green-600 dark:text-green-400">Online</div>
                             <p className="text-xs text-muted-foreground">Visible to customers</p>
                         </CardContent>
                     </Card>
-                    <Card className="hover:shadow-md transition-all duration-200 bg-primary/5 border-primary/20">
+                    <Card className="hover:shadow-md transition-all duration-200 bg-primary/5 dark:bg-primary/10 border-primary/20">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-primary">New Opportunities</CardTitle>
                             <TrendingUp className="h-4 w-4 text-primary" />
@@ -289,12 +311,12 @@ export default function Dashboard() {
                                 <p>Finding jobs near you...</p>
                             </div>
                         ) : marketBookings.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-gray-50 text-center">
-                                <div className="p-4 rounded-full bg-gray-100 mb-4">
-                                    <MapPinOff className="h-8 w-8 text-gray-400" />
+                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/30 text-center">
+                                <div className="p-4 rounded-full bg-muted mb-4">
+                                    <MapPinOff className="h-8 w-8 text-muted-foreground" />
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900">No new requests</h3>
-                                <p className="text-gray-500 max-w-sm mt-1">
+                                <h3 className="text-lg font-semibold">No new requests</h3>
+                                <p className="text-muted-foreground max-w-sm mt-1">
                                     There are currently no job requests in your service area. Check back soon!
                                 </p>
                             </div>
@@ -317,10 +339,10 @@ export default function Dashboard() {
                         {isLoading ? (
                             <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
                         ) : myBookings.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-gray-50 text-center">
-                                <CalendarClock className="h-10 w-10 text-gray-300 mb-4" />
-                                <h3 className="text-lg font-semibold text-gray-900">No upcoming jobs</h3>
-                                <p className="text-gray-500">Your schedule is clear.</p>
+                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/30 text-center">
+                                <CalendarClock className="h-10 w-10 text-muted-foreground mb-4" />
+                                <h3 className="text-lg font-semibold">No upcoming jobs</h3>
+                                <p className="text-muted-foreground">Your schedule is clear.</p>
                             </div>
                         ) : (
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">

@@ -223,6 +223,7 @@ as $$
 declare
   new_booking_id uuid;
   service_price numeric;
+  service_location geography(Point, 4326);
 begin
   -- 1. Security Check: Ensure caller manages this user (or is admin)
   if auth.uid() <> customer_uuid then
@@ -233,6 +234,11 @@ begin
   select base_price into service_price from public.services where id = service_id_input limit 1;
   if not found then raise exception 'Service not found'; end if;
 
+  -- 2b. Location Lookup (Spatial Bridge)
+  if address_id_input is not null then
+    select location into service_location from public.addresses where id = address_id_input limit 1;
+  end if;
+
   -- 3. Insert Booking
   insert into public.bookings (
     customer_id,
@@ -242,6 +248,7 @@ begin
     scheduled_at,
     duration_minutes,
     total_amount,
+    location,
     status
   ) values (
     customer_uuid,
@@ -252,6 +259,7 @@ begin
     duration_minutes_input,
     -- Simple pricing logic: base * (duration/60), minimal example
     round((service_price * (duration_minutes_input::numeric / 60.0)), 2),
+    service_location,
     'requested'
   )
   returning id into new_booking_id;

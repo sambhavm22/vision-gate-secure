@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
-import { ArrowLeft, Loader2, LogOut, MapPin, Save } from "lucide-react";
+import { ArrowLeft, Loader2, LogOut, MapPin, Moon, Save, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -23,6 +23,19 @@ export default function Profile() {
         bio: "",
         hourly_rate: 0,
     });
+
+    const [darkMode, setDarkMode] = useState(() => {
+        return localStorage.getItem("worker-darkMode") === "true";
+    });
+
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
+        localStorage.setItem("worker-darkMode", darkMode.toString());
+    }, [darkMode]);
 
     useEffect(() => {
         if (workerProfile) {
@@ -115,7 +128,7 @@ export default function Profile() {
     if (!workerProfile) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
+        <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <div className="max-w-2xl mx-auto space-y-6">
                 <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-2">
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -123,7 +136,7 @@ export default function Profile() {
                 </Button>
 
                 <Card className="shadow-sm">
-                    <CardHeader className="border-b bg-white rounded-t-lg">
+                    <CardHeader className="border-b bg-card rounded-t-lg">
                         <div className="flex items-center gap-4">
                             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
                                 {workerProfile.full_name?.charAt(0)}
@@ -134,7 +147,7 @@ export default function Profile() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-8 bg-white">
+                    <CardContent className="p-6 space-y-8 bg-card">
                         {/* Personal Info */}
                         <div className="space-y-4">
                             <div className="grid gap-2">
@@ -173,21 +186,21 @@ export default function Profile() {
                         {/* Location Section */}
                         <div className="pt-6 border-t">
                             <h3 className="text-lg font-semibold mb-4">Service Location</h3>
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl border">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-700">
+                                    <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center text-green-700 dark:text-green-400">
                                         <MapPin className="h-5 w-5" />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Service Area</p>
-                                        <p className="font-semibold text-slate-700">{locationName}</p>
+                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Service Area</p>
+                                        <p className="font-semibold">{locationName}</p>
                                     </div>
                                 </div>
                                 <Button
                                     variant="outline"
                                     onClick={updateLocation}
                                     disabled={isLocating}
-                                    className="w-full sm:w-auto bg-white"
+                                    className="w-full sm:w-auto"
                                 >
                                     {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
                                     Update to My Current Location
@@ -200,7 +213,26 @@ export default function Profile() {
                         </div>
 
                         {/* Dangerous Zone */}
-                        <div className="pt-8 border-t">
+                        <div className="pt-8 border-t space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border">
+                                <div className="flex items-center gap-3">
+                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${darkMode ? 'bg-slate-700 text-yellow-400' : 'bg-blue-100 text-blue-700'}`}>
+                                        {darkMode ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">Dark Mode</p>
+                                        <p className="text-xs text-muted-foreground">Adjust the interface for better visibility</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDarkMode(!darkMode)}
+                                >
+                                    {darkMode ? "Switch to Light" : "Switch to Dark"}
+                                </Button>
+                            </div>
+
                             <Button variant="destructive" onClick={handleLogout} className="w-full flex items-center justify-center gap-2">
                                 <LogOut className="h-4 w-4" />
                                 Sign Out

@@ -38,7 +38,9 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
         address_line1: "",
         city: "",
         postal_code: "",
-        label: "Home"
+        label: "Home",
+        lat: null as number | null,
+        lng: null as number | null
     });
     const [saving, setSaving] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
@@ -91,7 +93,13 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
 
             const addressToSave = {
                 customer_id: user.id,
-                ...newAddress,
+                address_line1: newAddress.address_line1,
+                city: newAddress.city,
+                postal_code: newAddress.postal_code,
+                label: newAddress.label,
+                location: newAddress.lat && newAddress.lng
+                    ? `POINT(${newAddress.lng} ${newAddress.lat})`
+                    : null,
                 created_at: new Date().toISOString()
             };
 
@@ -139,7 +147,9 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                                 ...prev,
                                 address_line1: area,
                                 city: city,
-                                postal_code: postcode
+                                postal_code: postcode,
+                                lat: lat,
+                                lng: lng
                             }));
 
                             toast({ title: "Location Found", description: `${area}, ${city}` });
@@ -181,10 +191,14 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                                     // For now, let's trigger the "Add" view with pre-filled data if they click this,
                                     // or just pass a temporary object if Payment can handle null ID.
                                     // Actually, let's pre-fill the Add form and switch view for confirmation.
+                                    const [area, cityPart] = currentLocation.split(',');
                                     setNewAddress(prev => ({
                                         ...prev,
-                                        address_line1: currentLocation.split(',')[0],
-                                        city: currentLocation.split(',')[1]?.trim() || ""
+                                        address_line1: area,
+                                        city: cityPart?.trim() || "",
+                                        // Default to Mumbai center if just string passed without coords
+                                        lat: 19.0760,
+                                        lng: 72.8777
                                     }));
                                     setView("add");
                                     toast({ title: "Confirm Address", description: "Please confirm your current location details." });
@@ -216,7 +230,14 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                             variant="outline"
                             className="w-full border-dashed border-primary/50 text-primary hover:bg-primary/5 h-12"
                             onClick={() => {
-                                setNewAddress({ address_line1: "", city: "", postal_code: "", label: "Home" });
+                                setNewAddress({
+                                    address_line1: "",
+                                    city: "",
+                                    postal_code: "",
+                                    label: "Home",
+                                    lat: null,
+                                    lng: null
+                                });
                                 setView("add");
                             }}
                         >
