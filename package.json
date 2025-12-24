@@ -7,9 +7,9 @@
     ],
     "scripts": {
         "build": "npm run build --workspaces",
-        "dev": "npm run dev --workspaces"
+        "dev": "concurrently \"npm run dev --workspace=@vision-gate/worker-app\" \"npm run dev --workspace=vite_react_shadcn_ts\""
     },
-    "optionalDependencies": {
-        "@rollup/rollup-darwin-arm64": "^4.53.5"
+    "devDependencies": {
+        "concurrently": "^9.2.1"
     }
 }

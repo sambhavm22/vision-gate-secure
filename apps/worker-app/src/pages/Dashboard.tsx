@@ -8,6 +8,7 @@ import { supabase } from "@vision-gate/supabase/client";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, RefreshCw, Star, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Dashboard() {
     const { workerProfile } = useAuth();
@@ -20,7 +21,34 @@ export default function Dashboard() {
     const [currentLocationName, setCurrentLocationName] = useState("Locating...");
     const [isLocating, setIsLocating] = useState(false);
 
+    // State for filters
+    const [sortBy, setSortBy] = useState("date-asc");
+    const [filterService, setFilterService] = useState("all");
+    const [filterDistance, setFilterDistance] = useState(50); // Default 50km
+
+    // Get unique services
+    const uniqueServices = Array.from(new Set(marketBookings.map(b => b.service_name).filter(Boolean)));
+
+    // Filter and Sort Logic
+    const filteredBookings = marketBookings
+        .filter(b => filterService === "all" || b.service_name === filterService)
+        .filter(b => {
+            if (!b.dist_meters) return true; // Show if distance is unknown? Or maybe filter out. Let's show for now.
+            return (b.dist_meters / 1000) <= filterDistance;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'date-asc') return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+            if (sortBy === 'date-desc') return new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime();
+            if (sortBy === 'dist-asc') return (a.dist_meters || Infinity) - (b.dist_meters || Infinity);
+            return 0;
+        });
+
     useEffect(() => {
+        // Init location from storage if available
+        const storedLocName = localStorage.getItem("workerLocationName");
+        if (storedLocName) {
+            setCurrentLocationName(storedLocName);
+        }
         detectLocation();
     }, []);
 
@@ -41,7 +69,10 @@ export default function Dashboard() {
                     const data = await response.json();
                     const area = data.address.suburb || data.address.neighbourhood || data.address.city_district;
                     const city = data.address.city || data.address.town || data.address.village;
-                    setCurrentLocationName(`${area ? area + ", " : ""}${city || "Unknown Location"}`);
+                    const locName = `${area ? area + ", " : ""}${city || "Unknown Location"}`;
+
+                    setCurrentLocationName(locName);
+                    localStorage.setItem("workerLocationName", locName);
 
                     // Update worker location in DB
                     if (workerProfile) {
@@ -65,7 +96,12 @@ export default function Dashboard() {
             },
             (error) => {
                 console.error("Geolocation error:", error);
-                setCurrentLocationName("Mumbai (Default)"); // Fallback
+
+                // Only reset if we don't have a stored location
+                if (!localStorage.getItem("workerLocationName")) {
+                    setCurrentLocationName("Mumbai (Default)");
+                }
+
                 setIsLocating(false);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -282,25 +318,77 @@ export default function Dashboard() {
                         <TabsTrigger value="my-jobs">My Schedule ({myBookings.length})</TabsTrigger>
                     </TabsList>
 
+
                     <TabsContent value="marketplace" className="space-y-4 min-h-[300px]">
+                        {/* Filter and Sort UI */}
+                        <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-white rounded-lg border shadow-sm">
+                            <div className="w-full md:w-1/3 space-y-2">
+                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Sort By</label>
+                                <Select onValueChange={setSortBy} defaultValue={sortBy}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sort by" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="date-asc">Date: Earliest First</SelectItem>
+                                        <SelectItem value="date-desc">Date: Latest First</SelectItem>
+                                        <SelectItem value="dist-asc">Location: Closest First</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="w-full md:w-1/3 space-y-2">
+                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Service Type</label>
+                                <Select onValueChange={setFilterService} defaultValue={filterService}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Filter by Service" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Services</SelectItem>
+                                        {uniqueServices.map((s: any) => (
+                                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="w-full md:w-1/3 space-y-2">
+                                <div className="flex justify-between">
+                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Distance Range</label>
+                                    <span className="text-xs text-muted-foreground">{filterDistance} km</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="100"
+                                    value={filterDistance}
+                                    onChange={(e) => setFilterDistance(Number(e.target.value))}
+                                    className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                                />
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>1 km</span>
+                                    <span>100 km</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {isLoading ? (
                             <div className="flex flex-col items-center justify-center p-12 text-gray-400 space-y-4">
                                 <Loader2 className="h-8 w-8 animate-spin" />
                                 <p>Finding jobs near you...</p>
                             </div>
-                        ) : marketBookings.length === 0 ? (
+                        ) : filteredBookings.length === 0 ? (
                             <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-gray-50 text-center">
                                 <div className="p-4 rounded-full bg-gray-100 mb-4">
                                     <MapPinOff className="h-8 w-8 text-gray-400" />
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900">No new requests</h3>
+                                <h3 className="text-lg font-semibold text-gray-900">No matching requests</h3>
                                 <p className="text-gray-500 max-w-sm mt-1">
-                                    There are currently no job requests in your service area. Check back soon!
+                                    Try adjusting your filters to see more results.
                                 </p>
                             </div>
                         ) : (
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-                                {marketBookings.map(booking => (
+                                {filteredBookings.map((booking: any) => (
                                     <BookingCard
                                         key={booking.booking_id || booking.id}
                                         booking={booking}
@@ -312,6 +400,7 @@ export default function Dashboard() {
                             </div>
                         )}
                     </TabsContent>
+
 
                     <TabsContent value="my-jobs" className="space-y-4 min-h-[300px]">
                         {isLoading ? (
