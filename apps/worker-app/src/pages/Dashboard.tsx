@@ -1,6 +1,7 @@
 import { BookingCard } from "@/components/BookingCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -8,7 +9,6 @@ import { supabase } from "@vision-gate/supabase/client";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Dashboard() {
     const { workerProfile } = useAuth();
@@ -21,7 +21,6 @@ export default function Dashboard() {
     const [currentLocationName, setCurrentLocationName] = useState("Locating...");
     const [isLocating, setIsLocating] = useState(false);
 
-<<<<<<< HEAD
     const [darkMode, setDarkMode] = useState(() => {
         return localStorage.getItem("worker-darkMode") === "true";
     });
@@ -34,7 +33,7 @@ export default function Dashboard() {
         }
         localStorage.setItem("worker-darkMode", darkMode.toString());
     }, [darkMode]);
-=======
+
     // State for filters
     const [sortBy, setSortBy] = useState("date-asc");
     const [filterService, setFilterService] = useState("all");
@@ -56,7 +55,6 @@ export default function Dashboard() {
             if (sortBy === 'dist-asc') return (a.dist_meters || Infinity) - (b.dist_meters || Infinity);
             return 0;
         });
->>>>>>> 1646d4a02e175677a7680441742de2677fb8af48
 
     useEffect(() => {
         // Init location from storage if available
@@ -345,7 +343,7 @@ export default function Dashboard() {
 
                     <TabsContent value="marketplace" className="space-y-4 min-h-[300px]">
                         {/* Filter and Sort UI */}
-                        <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-white rounded-lg border shadow-sm">
+                        <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-card rounded-lg border shadow-sm">
                             <div className="w-full md:w-1/3 space-y-2">
                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Sort By</label>
                                 <Select onValueChange={setSortBy} defaultValue={sortBy}>
@@ -400,25 +398,14 @@ export default function Dashboard() {
                                 <Loader2 className="h-8 w-8 animate-spin" />
                                 <p>Finding jobs near you...</p>
                             </div>
-<<<<<<< HEAD
-                        ) : marketBookings.length === 0 ? (
+                        ) : filteredBookings.length === 0 ? (
                             <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/30 text-center">
                                 <div className="p-4 rounded-full bg-muted mb-4">
                                     <MapPinOff className="h-8 w-8 text-muted-foreground" />
                                 </div>
-                                <h3 className="text-lg font-semibold">No new requests</h3>
+                                <h3 className="text-lg font-semibold">No matching requests</h3>
                                 <p className="text-muted-foreground max-w-sm mt-1">
-                                    There are currently no job requests in your service area. Check back soon!
-=======
-                        ) : filteredBookings.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-gray-50 text-center">
-                                <div className="p-4 rounded-full bg-gray-100 mb-4">
-                                    <MapPinOff className="h-8 w-8 text-gray-400" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-gray-900">No matching requests</h3>
-                                <p className="text-gray-500 max-w-sm mt-1">
                                     Try adjusting your filters to see more results.
->>>>>>> 1646d4a02e175677a7680441742de2677fb8af48
                                 </p>
                             </div>
                         ) : (
