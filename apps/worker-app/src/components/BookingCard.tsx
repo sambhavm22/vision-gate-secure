@@ -33,7 +33,7 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
                 </Badge>
             </CardHeader>
             <CardContent>
-                <div className="grid gap-2 text-sm text-gray-600">
+                <div className="grid gap-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
                         <span>{addressLine}, {city}</span>
@@ -51,12 +51,12 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
                         <Clock className="h-4 w-4" />
                         <span>{format(scheduledAt, "p")} ({booking.duration_minutes} mins)</span>
                     </div>
-                    <div className="flex items-center gap-2 font-semibold text-green-700">
+                    <div className="flex items-center gap-2 font-semibold text-green-600 dark:text-green-400">
                         <Banknote className="h-4 w-4" />
                         <span>₹{price}</span>
                     </div>
                     {booking.notes && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded text-xs italic">
+                        <div className="mt-2 p-2 bg-muted/50 rounded text-xs italic">
                             "{booking.notes}"
                         </div>
                     )}

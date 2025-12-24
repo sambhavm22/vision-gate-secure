@@ -5,9 +5,19 @@ import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
 import Onboarding from "@/pages/Onboarding";
 import Profile from "@/pages/Profile";
+import { useEffect } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 
 function App() {
+  useEffect(() => {
+    const darkMode = localStorage.getItem("worker-darkMode") === "true";
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
