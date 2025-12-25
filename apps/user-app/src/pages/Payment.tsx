@@ -1,8 +1,9 @@
+import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@vision-gate/supabase/client";
-import { ArrowLeft, Banknote, CheckCircle2, Circle, CreditCard, Landmark, Smartphone } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle2, Circle, CreditCard, Landmark, Pencil, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -12,6 +13,10 @@ const Payment = () => {
     const { toast } = useToast();
     const [state] = useState<any>(location.state || {});
     const [selectedMethod, setSelectedMethod] = useState("upi");
+
+    // Address Edit State
+    const [currentAddress, setCurrentAddress] = useState<any>(state.address || null);
+    const [showAddressDialog, setShowAddressDialog] = useState(false);
 
     const paymentMethods = [
         {
@@ -54,6 +59,18 @@ const Payment = () => {
                 return;
             }
 
+            // Validation: Ensure address is selected
+            if (!currentAddress && !state.notes) {
+                // If no address object, check if maybe logic allowed text location in pure notes, 
+                // but getting real address is better.
+                toast({
+                    title: "Address Required",
+                    description: "Please select an address for the service.",
+                    variant: "destructive"
+                });
+                return;
+            }
+
             toast({
                 title: "Processing Payment...",
                 description: "Please wait while we confirm your booking.",
@@ -63,7 +80,7 @@ const Payment = () => {
             const { data: bookingId, error } = await supabase.rpc('create_booking', {
                 customer_uuid: session.user.id,
                 service_id_input: state.service_id || 1, // Fallback to 1 if not passed
-                address_id_input: state.address?.id || null,
+                address_id_input: currentAddress?.id || null,
                 scheduled_at_input: new Date(Date.now() + 15 * 60000).toISOString(), // "Arriving in 15 Min"
                 duration_minutes_input: (state.duration || 1) * 60,
                 preferred_worker_id_input: null
@@ -93,7 +110,7 @@ const Payment = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 font-sans">
+        <div className="min-h-screen bg-slate-50 dark:bg-background p-4 font-sans">
             <div className="max-w-md mx-auto pt-8">
                 <Button variant="ghost" className="mb-4" onClick={() => navigate(-1)}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -118,15 +135,36 @@ const Payment = () => {
                             <span className="text-muted-foreground">Rate</span>
                             <span>{state.rate ? `₹${state.rate}/hr` : "Standard Rate"}</span>
                         </div>
-                        {state.address && (
-                            <div className="flex justify-between items-start pb-2 border-b">
-                                <span className="text-muted-foreground">Location</span>
-                                <span className="text-right text-sm font-medium w-1/2">
-                                    {state.address.label ? <span className="font-bold block text-xs text-primary mb-0.5">{state.address.label}</span> : null}
-                                    {state.address.address_line1}, {state.address.city}
-                                </span>
+
+                        <div className="flex justify-between items-start pb-2 border-b">
+                            <span className="text-muted-foreground">Location</span>
+                            <div className="text-right w-1/2">
+                                {currentAddress ? (
+                                    <>
+                                        <span className="text-sm font-medium block">
+                                            {currentAddress.label ? <span className="font-bold block text-xs text-primary mb-0.5">{currentAddress.label}</span> : null}
+                                            {currentAddress.address_line1}, {currentAddress.city}
+                                        </span>
+                                        <Button
+                                            variant="link"
+                                            className="h-auto p-0 text-xs text-primary mt-1"
+                                            onClick={() => setShowAddressDialog(true)}
+                                        >
+                                            <Pencil className="h-3 w-3 mr-1" /> Change Address
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs"
+                                        onClick={() => setShowAddressDialog(true)}
+                                    >
+                                        <Pencil className="h-3 w-3 mr-1" /> Add Address
+                                    </Button>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         <div className="flex justify-between items-center pt-2 text-lg font-bold">
                             <span>Total</span>
@@ -134,6 +172,17 @@ const Payment = () => {
                         </div>
                     </CardContent>
                 </Card>
+
+                <AddressSelectionDialog
+                    open={showAddressDialog}
+                    onOpenChange={setShowAddressDialog}
+                    onSelect={(addr) => {
+                        setCurrentAddress(addr);
+                        setShowAddressDialog(false);
+                        toast({ title: "Address Updated", description: "Booking location updated." });
+                    }}
+                    currentLocation={localStorage.getItem("userLocation") || "Mumbai"}
+                />
 
                 <div className="space-y-4">
                     <h3 className="font-semibold mb-2">Payment Method</h3>
@@ -144,14 +193,14 @@ const Payment = () => {
                                 onClick={() => setSelectedMethod(method.id)}
                                 className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all duration-200 ${selectedMethod === method.id
                                     ? "bg-primary/5 border-primary ring-1 ring-primary"
-                                    : "bg-white hover:border-gray-400"
+                                    : "bg-white dark:bg-card hover:border-gray-400 dark:hover:border-border"
                                     }`}
                             >
-                                <div className={`p-2 rounded-full ${selectedMethod === method.id ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-500"}`}>
+                                <div className={`p-2 rounded-full ${selectedMethod === method.id ? "bg-primary/10 text-primary" : "bg-gray-100 dark:bg-secondary text-gray-500 dark:text-muted-foreground"}`}>
                                     <method.icon className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <p className={`font-medium ${selectedMethod === method.id ? "text-primary" : "text-gray-900"}`}>
+                                    <p className={`font-medium ${selectedMethod === method.id ? "text-primary" : "text-gray-900 dark:text-foreground"}`}>
                                         {method.label}
                                     </p>
                                     <p className="text-xs text-muted-foreground">{method.description}</p>
@@ -159,7 +208,7 @@ const Payment = () => {
                                 {selectedMethod === method.id ? (
                                     <CheckCircle2 className="h-5 w-5 text-primary" />
                                 ) : (
-                                    <Circle className="h-5 w-5 text-gray-300" />
+                                    <Circle className="h-5 w-5 text-gray-300 dark:text-slate-600" />
                                 )}
                             </div>
                         ))}

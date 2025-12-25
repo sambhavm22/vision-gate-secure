@@ -25,9 +25,10 @@ interface AddressSelectionDialogProps {
     onOpenChange: (open: boolean) => void;
     onSelect: (address: Address) => void;
     currentLocation?: string;
+    initialAddress?: Address | null;
 }
 
-export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLocation }: AddressSelectionDialogProps) {
+export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLocation, initialAddress }: AddressSelectionDialogProps) {
     const { toast } = useToast();
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [loading, setLoading] = useState(false);
@@ -47,10 +48,27 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
 
     useEffect(() => {
         if (open) {
-            fetchAddresses();
-            setView("list");
+            if (initialAddress) {
+                setNewAddress({
+                    address_line1: initialAddress.address_line1,
+                    city: initialAddress.city,
+                    postal_code: initialAddress.postal_code,
+                    label: initialAddress.label || "Home"
+                });
+                setView("add");
+            } else {
+                fetchAddresses();
+                setView("list");
+                // Reset form
+                setNewAddress({
+                    address_line1: "",
+                    city: "",
+                    postal_code: "",
+                    label: "Home"
+                });
+            }
         }
-    }, [open]);
+    }, [open, initialAddress]);
 
     const fetchAddresses = async () => {
         try {
@@ -91,32 +109,47 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                 return;
             }
 
-            const addressToSave = {
+            const addressData = {
                 customer_id: user.id,
-                address_line1: newAddress.address_line1,
-                city: newAddress.city,
-                postal_code: newAddress.postal_code,
-                label: newAddress.label,
-                location: newAddress.lat && newAddress.lng
-                    ? `POINT(${newAddress.lng} ${newAddress.lat})`
-                    : null,
-                created_at: new Date().toISOString()
+                ...newAddress,
             };
 
-            const { data, error } = await supabase
-                .from("addresses" as any)
-                .insert(addressToSave as any)
-                .select()
-                .single();
+            let savedAddress;
 
-            if (error) throw error;
+            if (initialAddress?.id) {
+                // Update existing
+                const { data, error } = await supabase
+                    .from("addresses" as any)
+                    .update(addressData)
+                    .eq("id", initialAddress.id)
+                    .select()
+                    .single();
+                if (error) throw error;
+                savedAddress = data;
+                toast({ title: "Success", description: "Address updated successfully" });
+            } else {
+                // Create new
+                const { data, error } = await supabase
+                    .from("addresses" as any)
+                    .insert({ ...addressData, created_at: new Date().toISOString() } as any)
+                    .select()
+                    .single();
+                if (error) throw error;
+                savedAddress = data;
+                toast({ title: "Success", description: "Address saved successfully" });
+            }
 
-            setAddresses([data, ...addresses]);
-            setView("list");
-            toast({ title: "Success", description: "Address saved successfully" });
+            // Refresh list if we are in list view context, but if we are editing, we are likely done.
+            // If editing (initialAddress exists), we probably want to assume success and close/select.
+            // If adding new, we add to list.
 
-            // Auto-select the newly created address provided user intent? 
-            // Maybe just go back to list to let them confirm. 
+            if (initialAddress) {
+                onSelect(savedAddress);
+            } else {
+                setAddresses([savedAddress, ...addresses]);
+                setView("list");
+            }
+
         } catch (error: any) {
             console.error("Error saving address", error);
             toast({ title: "Error", description: error.message || "Failed to save address", variant: "destructive" });
@@ -176,7 +209,9 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{view === "list" ? "Select Service Location" : "Add New Address"}</DialogTitle>
+                    <DialogTitle>
+                        {view === "list" ? "Select Service Location" : (initialAddress ? "Edit Address" : "Add New Address")}
+                    </DialogTitle>
                 </DialogHeader>
 
                 {view === "list" ? (
