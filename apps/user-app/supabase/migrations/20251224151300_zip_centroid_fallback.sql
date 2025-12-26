@@ -12,6 +12,7 @@ create table if not exists public.zip_centroids (
 
 -- Enable RLS (public read)
 alter table public.zip_centroids enable row level security;
+drop policy if exists "Public view zip centroids" on public.zip_centroids;
 create policy "Public view zip centroids" on public.zip_centroids for select using (true);
 
 -- 4. Seed some sample data (Mumbai area)

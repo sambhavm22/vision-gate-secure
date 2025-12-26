@@ -89,11 +89,11 @@ export default function Dashboard() {
 
                     // Update worker location in DB
                     if (workerProfile) {
-                        const { error } = await supabase
-                            .from("workers_public")
+                        const { error } = await (supabase
+                            .from("workers_public") as any)
                             .update({
                                 location: `POINT(${longitude} ${latitude})`
-                            } as any)
+                            })
                             .eq("id", workerProfile.id);
 
                         if (error) {
