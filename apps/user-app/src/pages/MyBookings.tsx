@@ -1,8 +1,8 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@vision-gate/ui";
+import { Button } from "@vision-gate/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@vision-gate/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@vision-gate/ui";
+import { useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
 import { format } from "date-fns";
 import { ArrowLeft, Clock, MapPin, User } from "lucide-react";

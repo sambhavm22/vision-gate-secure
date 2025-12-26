@@ -1,9 +1,5 @@
 import { BookingCard } from "@/components/BookingCard";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
+import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";

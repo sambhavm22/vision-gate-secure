@@ -1,14 +1,6 @@
 import logo from "@/assets/helperhub-logo.png";
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useToast } from "@/hooks/use-toast";
+import { Badge, Button, Calendar as CalendarComponent, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useIsMobile, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
 import { Database } from "@vision-gate/supabase/types";
 import { format } from "date-fns";
@@ -174,13 +166,12 @@ const Dashboard = () => {
 
       // Use RPC for nearby workers
       // We explicitly cast the response or use `any` temporarily if RPC types are not fully generated yet
-      const { data, error } = await supabase
-        .rpc('nearby_workers', {
-          lat: userLat,
-          lng: userLng,
-          radius_meters: 50000,
-          service_filter: null // Add missing optional arg if strict
-        } as any); // Cast args if TS complains about overload
+      const { data, error } = await (supabase.rpc as any)('nearby_workers', {
+        lat: userLat,
+        lng: userLng,
+        radius_km: 10,
+        service_filter: null // Add missing optional arg if strict
+      }); // Cast args if TS complains about overload
 
       if (error) {
         console.error("RPC Error, falling back to simple select:", error);
@@ -191,7 +182,7 @@ const Dashboard = () => {
           .order("rating", { ascending: false });
 
         if (fallbackError) throw fallbackError;
-        setHelpers((fallbackData || []).map(w => ({
+        setHelpers((fallbackData || []).map((w: any) => ({
           ...w,
           service_types: w.service_types || [],
           service_type: w.service_types?.[0] || 'Helper', // UI compat

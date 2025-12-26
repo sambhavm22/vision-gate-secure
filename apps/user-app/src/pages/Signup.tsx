@@ -1,11 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
+import { Button, Input, Label, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Separator, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
 import logo from "@/assets/helperhub-logo.png";
 

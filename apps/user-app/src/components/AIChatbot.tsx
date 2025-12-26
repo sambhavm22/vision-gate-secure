@@ -1,10 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button, Input, Card, ScrollArea, useToast, useIsMobile } from "@vision-gate/ui";
 import { MessageSquare, Send, X, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   role: "user" | "assistant";
@@ -157,11 +153,10 @@ const AIChatbot = () => {
               className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}
+                className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
+                  }`}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>

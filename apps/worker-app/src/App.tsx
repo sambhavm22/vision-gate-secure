@@ -1,5 +1,5 @@
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@vision-gate/ui";
 import { AuthProvider } from "@/context/AuthContext";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";

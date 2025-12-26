@@ -1,17 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, Input, Textarea, useToast } from "@vision-gate/ui";
 import { useAuth } from "@/context/AuthContext";
 import { useServices } from "@/hooks/useServices";
 import { zodResolver } from "@hookform/resolvers/zod";
