@@ -1,14 +1,16 @@
+import { supabase } from "@vision-gate/supabase/client";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@vision-gate/supabase/client";
 import Landing from "./Landing";
 
 const Index = () => {
+  console.log("Index component: Rendering...");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
 
   useEffect(() => {
+    console.log("Index component: useEffect checking auth...");
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
 

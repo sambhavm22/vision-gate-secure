@@ -1,17 +1,22 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import logo from "@/assets/helperhub-logo.png";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@vision-gate/supabase/client";
-import logo from "@/assets/helperhub-logo.png";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
+  const [otpStep, setOtpStep] = useState<"phone" | "verify">("phone");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -51,6 +56,72 @@ const Login = () => {
     }
   };
 
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneNumber) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`,
+    });
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setOtpStep("verify");
+      toast({
+        title: "OTP Sent!",
+        description: "Please check your mobile for the verification code.",
+      });
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp) {
+      toast({
+        title: "Error",
+        description: "Please enter the OTP",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      phone: phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`,
+      token: otp,
+      type: 'sms',
+    });
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Welcome!",
+        description: "You have successfully logged in with mobile OTP.",
+      });
+      navigate("/dashboard");
+    }
+  };
+
   const handleOAuthLogin = async (provider: 'google' | 'facebook') => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -80,36 +151,106 @@ const Login = () => {
             <CardDescription>Sign in to access your account</CardDescription>
           </div>
         </CardHeader>
-        <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
 
+        <div className="px-6 pb-2">
+          <Tabs value={loginMethod} onValueChange={(val: any) => setLoginMethod(val)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="email">Email</TabsTrigger>
+              <TabsTrigger value="phone">Mobile OTP</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {loginMethod === "email" ? (
+          <form onSubmit={handleLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Signing in..." : "Sign In"}
+              </Button>
+            </CardFooter>
+          </form>
+        ) : (
+          <form onSubmit={otpStep === "phone" ? handleSendOtp : handleVerifyOtp}>
+            <CardContent className="space-y-4">
+              {otpStep === "phone" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Mobile Number</Label>
+                  <div className="flex gap-2">
+                    <span className="flex items-center px-3 border rounded-md bg-muted text-sm font-medium">+91</span>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="9999999999"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      required
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="otp">Verification Code</Label>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => setOtpStep("phone")}
+                    >
+                      Change Number
+                    </Button>
+                  </div>
+                  <Input
+                    id="otp"
+                    type="text"
+                    placeholder="Enter 6-digit OTP"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    OTP sent to +91 {phoneNumber}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading
+                  ? (otpStep === "phone" ? "Sending OTP..." : "Verifying...")
+                  : (otpStep === "phone" ? "Send OTP" : "Verify & Sign In")}
+              </Button>
+            </CardFooter>
+          </form>
+        )}
+
+        <div className="px-6 pb-6">
+          <div className="flex flex-col space-y-4">
             <div className="relative w-full">
               <Separator />
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
@@ -151,8 +292,8 @@ const Login = () => {
                 Sign up
               </Link>
             </p>
-          </CardFooter>
-        </form>
+          </div>
+        </div>
       </Card>
     </div>
   );
