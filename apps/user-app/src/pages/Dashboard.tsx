@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@vision-gate/supabase/client";
 import { Database } from "@vision-gate/supabase/types";
 import { format } from "date-fns";
-import { ArrowLeft, ArrowRight, Calendar, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, CheckCircle, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -664,8 +664,8 @@ const Dashboard = () => {
                           {helper.full_name.charAt(0)}
                         </div>
                         {helper.verified && (
-                          <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1" title="Verified Expert">
-                            <Sparkles className="h-3 w-3" />
+                          <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1" title="Verified Professional">
+                            <CheckCircle className="h-3 w-3" />
                           </div>
                         )}
                       </div>

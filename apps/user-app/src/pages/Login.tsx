@@ -21,6 +21,18 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (otpStep === "verify" && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [otpStep, timeLeft]);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
@@ -68,22 +80,44 @@ const Login = () => {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`,
-    });
-    setLoading(false);
+    console.log("Debugging: Starting handleSendOtp (Custom)");
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+    try {
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+      console.log("Sending OTP to:", formattedPhone);
+
+      // Call Custom Edge Function
+      const { data, error } = await supabase.functions.invoke('send-otp', {
+        body: { phoneNumber: formattedPhone },
       });
-    } else {
-      setOtpStep("verify");
+
+      console.log("Edge Function Response:", { data, error });
+
+      setLoading(false);
+
+      if (error) {
+        console.error("Function Error:", error);
+        toast({
+          title: "Error Sending OTP",
+          description: error.message || "Failed to send OTP",
+          variant: "destructive",
+        });
+      } else {
+        console.log("OTP Sent Successfully");
+        setOtpStep("verify");
+        setTimeLeft(60);
+        toast({
+          title: "OTP Sent!",
+          description: "Please check your mobile for the verification code.",
+        });
+      }
+    } catch (err: any) {
+      console.error("Unexpected Exception:", err);
+      setLoading(false);
       toast({
-        title: "OTP Sent!",
-        description: "Please check your mobile for the verification code.",
+        title: "Unexpected Error",
+        description: err.message || "An exception occurred",
+        variant: "destructive",
       });
     }
   };
@@ -100,25 +134,45 @@ const Login = () => {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({
-      phone: phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`,
-      token: otp,
-      type: 'sms',
-    });
-    setLoading(false);
 
-    if (error) {
+    try {
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+      console.log("Verifying OTP for:", formattedPhone);
+
+      // Call Custom Verify Function
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: { phoneNumber: formattedPhone, otp },
+      });
+
+      console.log("Verify Function Response:", { data, error });
+
+      if (error) {
+        throw new Error(error.message || "Verification Failed");
+      }
+
+      // Set Session Manually
+      if (data && data.session) {
+        const { error: sessionError } = await supabase.auth.setSession(data.session);
+        if (sessionError) throw sessionError;
+
+        toast({
+          title: "Welcome!",
+          description: "You have successfully logged in.",
+        });
+        navigate("/dashboard");
+      } else {
+        throw new Error("No session returned");
+      }
+
+    } catch (err: any) {
+      console.error("Verification Error:", err);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Verification Failed",
+        description: err.message || "Could not verify OTP",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Welcome!",
-        description: "You have successfully logged in with mobile OTP.",
-      });
-      navigate("/dashboard");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -236,6 +290,18 @@ const Login = () => {
                   <p className="text-xs text-muted-foreground">
                     OTP sent to +91 {phoneNumber}
                   </p>
+                  <div className="flex justify-between items-center text-sm mt-2">
+                    <span className="text-muted-foreground">Didn't receive code?</span>
+                    <Button
+                      variant="link"
+                      className="p-0 h-auto font-semibold"
+                      onClick={handleSendOtp}
+                      disabled={timeLeft > 0 || loading}
+                      type="button"
+                    >
+                      {timeLeft > 0 ? `Resend in ${timeLeft}s` : "Resend OTP"}
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

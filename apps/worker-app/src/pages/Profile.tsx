@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
-import { ArrowLeft, Loader2, LogOut, MapPin, Moon, Save, Sun } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, LogOut, MapPin, Moon, Save, ShieldAlert, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -17,6 +17,7 @@ export default function Profile() {
     const [loading, setLoading] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [locationName, setLocationName] = useState("Not set");
+
 
     const [formData, setFormData] = useState({
         full_name: "",
@@ -72,6 +73,38 @@ export default function Profile() {
         } catch (error: any) {
             toast({ variant: "destructive", title: "Update Failed", description: error.message });
         } finally {
+            setLoading(false);
+        }
+    };
+
+    const initiateVerification = async () => {
+        setLoading(true);
+        try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData.session?.access_token;
+
+            // Adjust to use invocation or fetch
+            const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-identity/initiate`;
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Failed to initiate verification');
+            }
+
+            const { url } = await response.json();
+            if (url) {
+                // Redirect to DigiLocker (or Mock)
+                window.location.href = url;
+            }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
             setLoading(false);
         }
     };
@@ -210,6 +243,27 @@ export default function Profile() {
                                 We use your location to show you relevant job requests in your immediate area.
                                 Update this whenever you move to a different service zone.
                             </p>
+                        </div>
+
+                        {/* Verification Section */}
+                        <div className="pt-6 border-t">
+                            <h3 className="text-lg font-semibold mb-4">Identity Verification</h3>
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl border">
+                                <div className="flex items-center gap-3">
+                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${workerProfile.is_verified ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400'}`}>
+                                        {workerProfile.is_verified ? <CheckCircle className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">{workerProfile.is_verified ? "Verified Worker" : "Verification Required"}</p>
+                                        <p className="text-xs text-muted-foreground">{workerProfile.is_verified ? "Your identity is verified via DigiLocker." : "Verify your identity to get the verified badge and more trust."}</p>
+                                    </div>
+                                </div>
+                                {!workerProfile.is_verified && (
+                                    <Button onClick={initiateVerification} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
+                                        Verify with DigiLocker
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Dangerous Zone */}
