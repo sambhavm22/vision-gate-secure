@@ -1,7 +1,7 @@
 import { BookingCard } from "@/components/BookingCard";
-import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
+import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -42,8 +42,10 @@ export default function Dashboard() {
     const filteredBookings = marketBookings
         .filter(b => filterService === "all" || b.service_name === filterService)
         .filter(b => {
-            if (!b.dist_meters) return true; // Show if distance is unknown? Or maybe filter out. Let's show for now.
-            return (b.dist_meters / 1000) <= filterDistance;
+            if (b.dist_meters === null || b.dist_meters === undefined) return true;
+            const distanceKm = b.dist_meters / 1000;
+            if (filterDistance >= 1000) return true;
+            return distanceKm <= filterDistance;
         })
         .sort((a, b) => {
             if (sortBy === 'date-asc') return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
@@ -161,8 +163,7 @@ export default function Dashboard() {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'bookings' },
-                (payload) => {
-                    console.log('Realtime update received:', payload);
+                (_payload) => {
                     // Refresh bookings on any change (simple invalidation strategy)
                     fetchBookings();
                 }
@@ -377,14 +378,15 @@ export default function Dashboard() {
                                 <input
                                     type="range"
                                     min="1"
-                                    max="100"
+                                    max="1000"
+                                    step="10"
                                     value={filterDistance}
                                     onChange={(e) => setFilterDistance(Number(e.target.value))}
                                     className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
                                 />
                                 <div className="flex justify-between text-xs text-muted-foreground">
                                     <span>1 km</span>
-                                    <span>100 km</span>
+                                    <span>1000+ km</span>
                                 </div>
                             </div>
                         </div>

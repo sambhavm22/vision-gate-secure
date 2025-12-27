@@ -11,6 +11,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@vision-gate/supabase": path.resolve(__dirname, "../../packages/supabase"),
+      "@vision-gate/ui": path.resolve(__dirname, "../../packages/ui/src"),
     },
   },
 })

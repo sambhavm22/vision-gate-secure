@@ -5,6 +5,7 @@ import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
 import Onboarding from "@/pages/Onboarding";
 import Profile from "@/pages/Profile";
+import VerificationCallback from "@/pages/VerificationCallback";
 import { useEffect } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 
@@ -47,6 +48,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/verification/callback"
+            element={
+              <ProtectedRoute>
+                <VerificationCallback />
               </ProtectedRoute>
             }
           />
