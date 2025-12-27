@@ -22,7 +22,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useServices } from "@/hooks/useServices";
 import { supabase } from "@vision-gate/supabase/client";
-import { ArrowLeft, CheckCircle, Loader2, LogOut, MapPin, Moon, Save, ShieldAlert, Sun } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, LogOut, MapPin, Moon, Plus, Save, ShieldAlert, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -34,6 +34,7 @@ export default function Profile() {
     const [loading, setLoading] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [locationName, setLocationName] = useState("Not set");
+    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
 
     const [formData, setFormData] = useState({
@@ -89,6 +90,29 @@ export default function Profile() {
             if (error) throw error;
 
             toast({ title: "Profile Updated", description: "Changes saved successfully." });
+            await refreshProfile();
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateServices = async (newServices: string[]) => {
+        if (!workerProfile) return;
+        setLoading(true);
+        try {
+            const { error } = await (supabase
+                .from("workers_public") as any)
+                .update({
+                    service_types: newServices,
+                })
+                .eq("id", workerProfile.id);
+
+            if (error) throw error;
+
+            toast({ title: "Services Updated", description: "Your service offerings have been updated." });
+            setFormData(prev => ({ ...prev, service_types: newServices }));
             await refreshProfile();
         } catch (error: any) {
             toast({ variant: "destructive", title: "Update Failed", description: error.message });
