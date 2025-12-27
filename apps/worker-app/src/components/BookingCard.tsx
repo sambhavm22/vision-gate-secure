@@ -1,6 +1,6 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@vision-gate/ui";
+import { Button } from "@vision-gate/ui";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@vision-gate/ui";
 import { format } from "date-fns";
 import { Banknote, Calendar, CheckCircle, Clock, MapPin, XCircle } from "lucide-react";
 

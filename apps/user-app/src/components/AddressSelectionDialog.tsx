@@ -1,9 +1,9 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@vision-gate/ui";
+import { Button } from "@vision-gate/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@vision-gate/ui";
+import { Input } from "@vision-gate/ui";
+import { Label } from "@vision-gate/ui";
+import { useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
 import { ArrowRight, Briefcase, Home, MapPin, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -40,8 +40,8 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
         city: "",
         postal_code: "",
         label: "Home",
-        lat: null as number | null,
-        lng: null as number | null
+        lat: 0,
+        lng: 0
     });
     const [saving, setSaving] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
@@ -53,7 +53,9 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                     address_line1: initialAddress.address_line1,
                     city: initialAddress.city,
                     postal_code: initialAddress.postal_code,
-                    label: initialAddress.label || "Home"
+                    label: initialAddress.label || "Home",
+                    lat: initialAddress.location?.lat || 0,
+                    lng: initialAddress.location?.lng || 0,
                 });
                 setView("add");
             } else {
@@ -64,7 +66,9 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                     address_line1: "",
                     city: "",
                     postal_code: "",
-                    label: "Home"
+                    label: "Home",
+                    lat: 0,
+                    lng: 0,
                 });
             }
         }
@@ -78,8 +82,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
 
             // Note: Assuming 'addresses' table exists as per migration references
             // Using 'any' cast if types are missing in generated file
-            const { data, error } = await supabase
-                .from("addresses" as any)
+            const { data, error } = await (supabase.from("addresses") as any)
                 .select("*")
                 .eq("customer_id", user.id)
                 .order("created_at", { ascending: false });
@@ -118,8 +121,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
 
             if (initialAddress?.id) {
                 // Update existing
-                const { data, error } = await supabase
-                    .from("addresses" as any)
+                const { data, error } = await (supabase.from("addresses") as any)
                     .update(addressData)
                     .eq("id", initialAddress.id)
                     .select()
@@ -129,9 +131,8 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                 toast({ title: "Success", description: "Address updated successfully" });
             } else {
                 // Create new
-                const { data, error } = await supabase
-                    .from("addresses" as any)
-                    .insert({ ...addressData, created_at: new Date().toISOString() } as any)
+                const { data, error } = await (supabase.from("addresses") as any)
+                    .insert({ ...addressData, created_at: new Date().toISOString() })
                     .select()
                     .single();
                 if (error) throw error;

@@ -1,7 +1,6 @@
+
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, RadioGroup, RadioGroupItem, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
 import { ArrowLeft, Banknote, CheckCircle2, Circle, CreditCard, Landmark, Pencil, Smartphone } from "lucide-react";
 import { useState } from "react";
@@ -77,14 +76,14 @@ const Payment = () => {
             });
 
             // Use the create_booking RPC for transaction-safe booking
-            const { data: bookingId, error } = await supabase.rpc('create_booking', {
+            const { data: bookingId, error } = await (supabase.rpc as any)('create_booking', {
                 customer_uuid: session.user.id,
                 service_id_input: state.service_id || 1, // Fallback to 1 if not passed
                 address_id_input: currentAddress?.id || null,
                 scheduled_at_input: new Date(Date.now() + 15 * 60000).toISOString(), // "Arriving in 15 Min"
                 duration_minutes_input: (state.duration || 1) * 60,
                 preferred_worker_id_input: null
-            } as any);
+            });
 
             if (error) throw error;
 
@@ -133,8 +132,8 @@ const Payment = () => {
                         </div>
                         <div className="flex justify-between items-center pb-2 border-b">
                             <span className="text-muted-foreground">Rate</span>
-                            <span>{state.rate ? `₹${state.rate}/hr` : "Standard Rate"}</span>
-                        </div>
+                            <span>{state.rate ? `₹${state.rate} /hr` : "Standard Rate"}</span >
+                        </div >
 
                         <div className="flex justify-between items-start pb-2 border-b">
                             <span className="text-muted-foreground">Location</span>
@@ -170,8 +169,8 @@ const Payment = () => {
                             <span>Total</span>
                             <span className="text-primary">₹{state.price || "0"}</span>
                         </div>
-                    </CardContent>
-                </Card>
+                    </CardContent >
+                </Card >
 
                 <AddressSelectionDialog
                     open={showAddressDialog}
@@ -218,8 +217,8 @@ const Payment = () => {
                 <Button className="w-full mt-8" size="lg" onClick={handlePayment}>
                     {selectedMethod === 'cash' ? 'Confirm Booking' : `Pay ₹${state.price || "0"}`}
                 </Button>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

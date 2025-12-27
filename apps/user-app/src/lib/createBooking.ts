@@ -29,7 +29,7 @@ export async function createBooking(params: CreateBookingParams): Promise<string
     notes_input: params.notes ?? null,
   } as const;
 
-  const { data, error } = await supabase.rpc('create_booking', payload);
+  const { data, error } = await (supabase.rpc as any)('create_booking', payload);
 
   if (error) {
     const msg = (error.message || '').toLowerCase();

@@ -1,9 +1,5 @@
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog"; // Reuse the dialog
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
 import { ArrowLeft, Briefcase, Home, LogOut, Mail, MapPin, Pencil, Phone, Plus, Trash2, User } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -219,7 +215,7 @@ const Profile = () => {
         </div>
 
         <div className="flex justify-center pt-8">
-          <Button variant="destructive" variant="outline" className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200" onClick={handleLogout}>
+          <Button variant="outline" className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out
           </Button>

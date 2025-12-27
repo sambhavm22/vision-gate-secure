@@ -1,11 +1,5 @@
 import logo from "@/assets/helperhub-logo.png";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, Separator, Tabs, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
