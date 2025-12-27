@@ -1,6 +1,6 @@
 import logo from "@/assets/helperhub-logo.png";
-import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, Separator, Tabs, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
+import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, Separator, Tabs, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -74,18 +74,13 @@ const Login = () => {
     }
 
     setLoading(true);
-    console.log("Debugging: Starting handleSendOtp (Custom)");
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      console.log("Sending OTP to:", formattedPhone);
-
       // Call Custom Edge Function
       const { data, error } = await supabase.functions.invoke('send-otp', {
         body: { phoneNumber: formattedPhone },
       });
-
-      console.log("Edge Function Response:", { data, error });
 
       setLoading(false);
 
@@ -97,7 +92,6 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        console.log("OTP Sent Successfully");
         setOtpStep("verify");
         setTimeLeft(60);
         toast({
@@ -131,14 +125,10 @@ const Login = () => {
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      console.log("Verifying OTP for:", formattedPhone);
-
       // Call Custom Verify Function
       const { data, error } = await supabase.functions.invoke('verify-otp', {
         body: { phoneNumber: formattedPhone, otp },
       });
-
-      console.log("Verify Function Response:", { data, error });
 
       if (error) {
         throw new Error(error.message || "Verification Failed");

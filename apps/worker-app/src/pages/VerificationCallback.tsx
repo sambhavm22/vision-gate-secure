@@ -1,8 +1,6 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@vision-gate/ui";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -10,7 +8,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 export default function VerificationCallback() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { toast } = useToast();
     const { refreshProfile, user } = useAuth();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [message, setMessage] = useState("Verifying your identity...");
@@ -38,34 +35,8 @@ export default function VerificationCallback() {
             }
 
             try {
-                // Call Edge Function
-                const { data, error: fnError } = await supabase.functions.invoke('verify-identity', {
-                    body: {
-                        worker_id: user.id,
-                        code: code
-                    },
-                    method: 'POST',
-                    headers: {
-                        // The suffix indicates which handler to use in our combined function
-                    }
-                });
-
-                // Note: The Edge Function I wrote uses URL path routing (/callback). 
-                // Using supabase.functions.invoke('verify-identity') sends to the root.
-                // I need to make sure my Edge Function handles the default path correctly OR use a fetch to the full URL.
-                // Supabase functions invocation usually sends to the function root.
-                // Let's adjust correct invocation. 
-                // Actually, supabase.functions.invoke appends the function name.
-                // To hit /callback, I might need to append it or use a custom fetch if invoke doesn't support subpaths easily.
-                // However, the `invoke` method usually just POSTs to the function.
-                // My Edge Function parses `req.url`.
-                // If I use `invoke`, the URL is likely `.../verify-identity`.
-                // I need to update my Edge Function logic to handle the payload differentiation if strict path checking fails, 
-                // OR I can pass a query param or body param to switch mode.
-                // Let's assume for now I will modify the Edge Function or use a trick.
-                // Actually, I can pass a body param `action: 'callback'`.
-
                 // Let's use `fetch` to be precise with the URL.
+
                 const { data: sessionData } = await supabase.auth.getSession();
                 const token = sessionData.session?.access_token;
 

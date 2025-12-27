@@ -34,6 +34,9 @@
       ],
       "@vision-gate/supabase/*": [
         "../../packages/supabase/*"
+      ],
+      "@vision-gate/ui": [
+        "../../packages/ui/src"
       ]
     }
   },

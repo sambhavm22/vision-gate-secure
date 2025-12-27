@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button, Input, Label, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Separator, useToast } from "@vision-gate/ui";
-import { supabase } from "@vision-gate/supabase/client";
 import logo from "@/assets/helperhub-logo.png";
+import { supabase } from "@vision-gate/supabase/client";
+import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, Separator, useToast } from "@vision-gate/ui";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const [name, setName] = useState("");
@@ -38,8 +38,6 @@ const Signup = () => {
       },
     });
 
-    // Debug logging
-    console.log('Signup response:', { data, error });
 
     setLoading(false);
 
@@ -52,13 +50,11 @@ const Signup = () => {
     } else {
       // Check if email confirmation is required
       if (data.user && !data.user.email_confirmed_at) {
-        console.log('⚠️ Email confirmation required for user:', data.user.email);
         toast({
           title: "Check your email!",
           description: "Please confirm your email address to complete registration. Check your inbox for a confirmation link.",
         });
       } else {
-        console.log('✅ User created successfully:', data.user?.email);
         toast({
           title: "Account created!",
           description: "Welcome to HelperHub. You can now start booking helpers.",
