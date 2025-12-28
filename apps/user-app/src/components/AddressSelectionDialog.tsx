@@ -1,10 +1,5 @@
-import { Badge } from "@vision-gate/ui";
-import { Button } from "@vision-gate/ui";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@vision-gate/ui";
-import { Input } from "@vision-gate/ui";
-import { Label } from "@vision-gate/ui";
-import { useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
+import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, useToast } from "@vision-gate/ui";
 import { ArrowRight, Briefcase, Home, MapPin, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -16,6 +11,8 @@ interface Address {
     postal_code: string;
     label?: string; // e.g. Home, Work
     location?: any;
+    lat?: number;
+    lng?: number;
     is_default?: boolean;
     created_at?: string;
 }
@@ -54,8 +51,8 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                     city: initialAddress.city,
                     postal_code: initialAddress.postal_code,
                     label: initialAddress.label || "Home",
-                    lat: initialAddress.location?.lat || 0,
-                    lng: initialAddress.location?.lng || 0,
+                    lat: initialAddress.lat || initialAddress.location?.lat || 0,
+                    lng: initialAddress.lng || initialAddress.location?.lng || 0,
                 });
                 setView("add");
             } else {
@@ -112,9 +109,24 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                 return;
             }
 
+            // Verify location (Geocode)
+            // We use the result directly to avoid stale state issues in this closure
+            const coords = await geocodeAddressIfNeeded();
+
+            if (!coords) {
+                toast({
+                    title: "Location Unverified",
+                    description: "We couldn't verify this address location. Please check the City/Pincode or use 'Current Location'.",
+                    variant: "destructive"
+                });
+                return;
+            }
+
             const addressData = {
                 customer_id: user.id,
                 ...newAddress,
+                lat: coords.lat,
+                lng: coords.lng
             };
 
             let savedAddress;
@@ -174,7 +186,6 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                         if (data && data.address) {
                             const area = data.address.suburb || data.address.neighbourhood || data.address.residential || data.address.road || "";
                             const city = data.address.city || data.address.town || data.address.village || data.address.state_district || "";
-                            const state = data.address.state || "";
                             const postcode = data.address.postcode || "";
 
                             setNewAddress(prev => ({
@@ -204,6 +215,87 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
         } else {
             setIsLocating(false);
         }
+    };
+
+    const fetchLocationFromPincode = async (pincode: string) => {
+        if (!pincode || pincode.length < 6) return;
+
+        try {
+            // Specialized query for postal codes
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&postalcode=${pincode}&country=India&limit=1`);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+
+                // Nominatim display_name usually has hierarchy
+                const displayName = data[0].display_name || "";
+                const parts = displayName.split(", ");
+
+                let city = newAddress.city;
+                if (!city) {
+                    // In standard nominatim: [Area, City, State, Postcode, Country]
+                    city = parts.length > 3 ? parts[parts.length - 4] : parts[0];
+                }
+
+                console.log("Fetched from PIN:", lat, lng, city);
+
+                setNewAddress(prev => ({
+                    ...prev,
+                    lat,
+                    lng,
+                    city: prev.city || city // Only auto-fill if empty
+                }));
+
+                toast({ title: "Location Found", description: "City and coordinates updated from pincode." });
+            }
+        } catch (error) {
+            console.error("Error fetching from pincode", error);
+        }
+    };
+
+    // Returns coordinates object or null
+    const geocodeAddressIfNeeded = async (): Promise<{ lat: number, lng: number } | null> => {
+        // If we already have coordinates, use them
+        if (newAddress.lat && newAddress.lng) {
+            return { lat: newAddress.lat, lng: newAddress.lng };
+        }
+
+        // Try structured search
+        try {
+            let url = "";
+            let queryType = "";
+
+            if (newAddress.postal_code && newAddress.postal_code.length >= 6) {
+                url = `https://nominatim.openstreetmap.org/search?format=json&postalcode=${newAddress.postal_code}&country=India&limit=1`;
+                queryType = "postal";
+            } else if (newAddress.city) {
+                const q = `${newAddress.address_line1 ? newAddress.address_line1 + ', ' : ''}${newAddress.city}`;
+                url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&country=India&limit=1`;
+                queryType = "address";
+            } else {
+                return null;
+            }
+
+            // Using fetch explicitly for Nominatim
+            // Consider adding User-Agent logic if implementing backend proxy, but for frontend fetch browser handles headers.
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+
+                // Update state for UI feedback (though save might complete before render)
+                setNewAddress(prev => ({ ...prev, lat, lng }));
+
+                return { lat, lng };
+            }
+        } catch (error) {
+            console.error("Geocoding failed", error);
+        }
+        return null; // Failed or not found
     };
 
     return (
@@ -378,6 +470,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                                         placeholder="Zip Code"
                                         value={newAddress.postal_code}
                                         onChange={e => setNewAddress({ ...newAddress, postal_code: e.target.value })}
+                                        onBlur={(e) => fetchLocationFromPincode(e.target.value)}
                                     />
                                 </div>
                             </div>

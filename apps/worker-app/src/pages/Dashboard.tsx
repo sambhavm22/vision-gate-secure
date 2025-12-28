@@ -124,9 +124,15 @@ export default function Dashboard() {
         setIsLoading(true);
         try {
             // 1. Fetch Market Bookings (RPC)
+            // 1. Fetch Market Bookings (RPC)
+            // Using v2 to avoid ambiguity
             const { data: marketData, error: marketError } = await supabase.rpc(
-                "get_market_bookings",
-                { p_worker_id: workerProfile.id } as any
+                "get_market_bookings_v2",
+                {
+                    p_worker_id: workerProfile.id,
+                    p_limit: 50,
+                    p_radius_km: 100
+                } as any
             );
             if (marketError) throw marketError;
             setMarketBookings(marketData || []);
