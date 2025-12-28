@@ -1,11 +1,7 @@
-import { Badge } from "@vision-gate/ui";
-import { Button } from "@vision-gate/ui";
-import { Card, CardContent, CardHeader, CardTitle } from "@vision-gate/ui";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@vision-gate/ui";
-import { useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, useToast } from "@vision-gate/ui";
 import { format } from "date-fns";
-import { ArrowLeft, Clock, MapPin, User } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Star, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -31,6 +27,9 @@ interface Booking {
     postal_code: string | null;
     label: string | null;
   } | null;
+  // User rating for this booking
+  rating: number | null;
+  review: string | null;
 }
 
 const MyBookings = () => {
@@ -39,6 +38,13 @@ const MyBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  // Rating State
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [ratingBookingId, setRatingBookingId] = useState<string | null>(null);
+  const [ratingVal, setRatingVal] = useState(5);
+  const [reviewVal, setReviewVal] = useState("");
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   useEffect(() => {
     let channel: any;
@@ -80,7 +86,6 @@ const MyBookings = () => {
         return;
       }
 
-      // Check types.ts or runtime for exact relationship names. Usually 'workers_public' and 'services'
       const { data, error } = await supabase
         .from("bookings")
         .select(`
@@ -90,6 +95,8 @@ const MyBookings = () => {
           total_amount,
           duration_minutes,
           notes,
+          rating,
+          review,
           service:service_id (
             name
           ),
@@ -110,7 +117,7 @@ const MyBookings = () => {
         .order("scheduled_at", { ascending: false });
 
       if (error) throw error;
-      setBookings(data as any || []); // Casting as any for now to bypass strict generic checks if types aren't perfect
+      setBookings(data as any || []);
     } catch (error) {
       console.error("Error fetching bookings:", error);
       toast({
@@ -137,6 +144,52 @@ const MyBookings = () => {
       case "requested":
       default:
         return "outline"; // Pending/Requested
+    }
+  };
+
+  const openRatingDialog = (bookingId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setRatingBookingId(bookingId);
+    setRatingVal(5);
+    setReviewVal("");
+    setShowRatingDialog(true);
+  };
+
+  const handleSubmitRating = async () => {
+    if (!ratingBookingId) return;
+
+    setIsSubmittingRating(true);
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          rating: ratingVal,
+          review: reviewVal
+        } as any)
+        .eq("id", ratingBookingId)
+        .eq("status", "completed"); // Security double-check
+
+      if (error) throw error;
+
+      toast({
+        title: "Rating Submitted",
+        description: "Thank you for your feedback!",
+      });
+
+      // Optimistic update or wait for realtime
+      setBookings(prev => prev.map(b =>
+        b.id === ratingBookingId ? { ...b, rating: ratingVal, review: reviewVal } : b
+      ));
+      setShowRatingDialog(false);
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit rating",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingRating(false);
     }
   };
 
@@ -179,15 +232,32 @@ const MyBookings = () => {
             {bookings.map((booking) => (
               <Card
                 key={booking.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-primary"
+                className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-primary group"
                 onClick={() => setSelectedBooking(booking)}
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-xl">{booking.service?.name || 'Service Request'}</CardTitle>
-                    <Badge variant={getStatusVariant(booking.status) as any}>
-                      {booking.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {booking.status === "completed" && !booking.rating && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => openRatingDialog(booking.id, e)}
+                          className="mr-2 text-yellow-600 border-yellow-200 hover:bg-yellow-50"
+                        >
+                          <Star className="h-4 w-4 mr-1" /> Rate Worker
+                        </Button>
+                      )}
+                      {booking.rating && (
+                        <div className="flex items-center text-yellow-500 mr-2 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100 text-sm font-bold">
+                          {booking.rating} ★
+                        </div>
+                      )}
+                      <Badge variant={getStatusVariant(booking.status) as any}>
+                        {booking.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -259,10 +329,39 @@ const MyBookings = () => {
                   <h3 className="text-lg font-semibold">{selectedBooking.service?.name}</h3>
                   <p className="text-sm text-muted-foreground">Booking ID: {selectedBooking.id.slice(0, 8)}...</p>
                 </div>
-                <Badge variant={getStatusVariant(selectedBooking.status) as any} className="capitalize">
-                  {selectedBooking.status.replace('_', ' ')}
-                </Badge>
+                <div className="text-right">
+                  <Badge variant={getStatusVariant(selectedBooking.status) as any} className="capitalize mb-2 block">
+                    {selectedBooking.status.replace('_', ' ')}
+                  </Badge>
+                  {selectedBooking.status === "completed" && !selectedBooking.rating && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7"
+                      onClick={(e) => openRatingDialog(selectedBooking.id, e)}
+                    >
+                      Rate Now
+                    </Button>
+                  )}
+                </div>
               </div>
+
+              {selectedBooking.rating && (
+                <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl">
+                  <p className="text-xs uppercase font-bold text-yellow-700 mb-1">You Rated This Job</p>
+                  <div className="flex items-center gap-1 mb-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-5 w-5 ${i < selectedBooking.rating! ? "fill-yellow-500 text-yellow-500" : "text-gray-300"}`}
+                      />
+                    ))}
+                  </div>
+                  {selectedBooking.review && (
+                    <p className="text-sm text-gray-700 italic">"{selectedBooking.review}"</p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-4 bg-muted/30 p-4 rounded-xl">
                 <div className="flex items-start gap-3">
@@ -334,6 +433,41 @@ const MyBookings = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Rating Dialog */}
+      <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">Rate your Experience</DialogTitle>
+          </DialogHeader>
+          <div className="py-6 flex flex-col items-center">
+            <div className="flex gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`h-8 w-8 cursor-pointer transition-all hover:scale-110 ${star <= ratingVal ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                  onClick={() => setRatingVal(star)}
+                />
+              ))}
+            </div>
+            <p className="font-medium text-lg mb-4">{ratingVal === 5 ? "Excellent!" : ratingVal === 4 ? "Good" : ratingVal === 3 ? "Average" : "Poor"}</p>
+
+            <textarea
+              className="w-full border rounded-md p-3 text-sm focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px]"
+              placeholder="Share more details about the service (optional)..."
+              value={reviewVal}
+              onChange={(e) => setReviewVal(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowRatingDialog(false)}>Cancel</Button>
+            <Button onClick={handleSubmitRating} disabled={isSubmittingRating}>
+              {isSubmittingRating ? "Submitting..." : "Submit Rating"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
