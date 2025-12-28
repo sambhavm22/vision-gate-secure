@@ -49,7 +49,6 @@ serve(async (req) => {
             throw new Error("Failed to store OTP");
         }
 
-        console.log(`Sending OTP ${otp} to ${phoneNumber} via Twilio Messaging Service: ${TWILIO_SERVICE_SID}`);
 
         // 3. Call Twilio Messaging API
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;

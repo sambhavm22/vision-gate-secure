@@ -30,8 +30,9 @@ serve(async (req) => {
         const url = new URL(req.url)
         // 1. Initiate Verification Flow
         if (url.pathname.endsWith('/initiate')) {
-            // Implement Mock or Real URL generation
-            const mockUrl = `http://localhost:5173/verification/callback?code=mock_code_123&state=${user.id}`;
+            // Generate redirect URL from environment
+            const appUrl = Deno.env.get('APP_URL') || 'http://localhost:5173';
+            const mockUrl = `${appUrl}/verification/callback?code=mock_code_123&state=${user.id}`;
 
             // In a real scenario, this would be the DigiLocker authorized URL
             // const digilockerUrl = `https://digilocker.gov.in/install/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&state=${user.id}`;

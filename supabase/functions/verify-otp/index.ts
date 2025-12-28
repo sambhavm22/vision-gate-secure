@@ -52,19 +52,42 @@ serve(async (req) => {
 
         // 2. Success! Proceed with Session Minting
 
-        // Find or Create User
-        const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-        if (listError) throw listError;
+        // Find or Create User - Optimized lookup
+        // First try to find existing user by phone using a direct query
+        const { data: existingUsers, error: lookupError } = await supabaseAdmin
+            .from('auth.users')
+            .select('id')
+            .eq('phone', phoneNumber)
+            .limit(1);
 
-        const existingUser = users.find(u => u.phone === phoneNumber);
+        let userId: string;
 
-        let userId;
-        if (existingUser) {
-            userId = existingUser.id;
+        if (lookupError) {
+            // Fallback: Try admin API if direct query fails
+            const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+                page: 1,
+                perPage: 1000
+            });
+            if (listError) throw listError;
+            const existingUser = users.find(u => u.phone === phoneNumber);
+
+            if (existingUser) {
+                userId = existingUser.id;
+            } else {
+                const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                    phone: phoneNumber,
+                    phone_confirm: true,
+                    user_metadata: { phone_verified: true }
+                });
+                if (createError) throw createError;
+                userId = newUser.user.id;
+            }
+        } else if (existingUsers && existingUsers.length > 0) {
+            userId = existingUsers[0].id;
         } else {
+            // Create new user
             const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
                 phone: phoneNumber,
-                email_confirm: true,
                 phone_confirm: true,
                 user_metadata: { phone_verified: true }
             });
