@@ -1,8 +1,7 @@
-import { Badge } from "@vision-gate/ui";
-import { Button } from "@vision-gate/ui";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@vision-gate/ui";
+import { Badge, Button, Card, CardContent, CardFooter, CardHeader, CardTitle } from "@vision-gate/ui";
 import { format } from "date-fns";
 import { Banknote, Calendar, CheckCircle, Clock, MapPin, XCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface BookingCardProps {
     booking: any; // Using any for flexibility with RPC vs Table select shapes, specifically for this MVP
@@ -13,6 +12,7 @@ interface BookingCardProps {
 }
 
 export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }: BookingCardProps) {
+    const { t } = useTranslation();
     const isMarket = type === 'marketplace';
 
     // Normalize data access (RPC vs Join)
@@ -29,7 +29,7 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
                     {serviceName}
                 </CardTitle>
                 <Badge variant={isMarket ? "default" : "secondary"}>
-                    {isMarket ? "New Request" : booking.status}
+                    {isMarket ? t('jobs.new_request') : booking.status}
                 </Badge>
             </CardHeader>
             <CardContent>
@@ -39,7 +39,7 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
                         <span>{addressLine}, {city}</span>
                         {booking.dist_meters && (
                             <span className="text-xs text-muted-foreground">
-                                ({(booking.dist_meters / 1000).toFixed(1)} km away)
+                                ({(booking.dist_meters / 1000).toFixed(1)} {t('jobs.km_away')})
                             </span>
                         )}
                     </div>
@@ -49,7 +49,7 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
                     </div>
                     <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        <span>{format(scheduledAt, "p")} ({booking.duration_minutes} mins)</span>
+                        <span>{format(scheduledAt, "p")} ({booking.duration_minutes} {t('jobs.mins')})</span>
                     </div>
                     <div className="flex items-center gap-2 font-semibold text-green-600 dark:text-green-400">
                         <Banknote className="h-4 w-4" />
@@ -65,13 +65,13 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
             <CardFooter className="flex justify-end gap-2">
                 {isMarket && onAccept && (
                     <Button onClick={() => onAccept(booking.booking_id || booking.id)} disabled={isProcessing}>
-                        {isProcessing ? "Accepting..." : "Accept Job"}
+                        {isProcessing ? t('jobs.accepting') : t('jobs.accept_job')}
                         <CheckCircle className="ml-2 h-4 w-4" />
                     </Button>
                 )}
                 {!isMarket && onCancel && (
                     <Button variant="destructive" size="sm" onClick={() => onCancel(booking.booking_id || booking.id)} disabled={isProcessing}>
-                        Cancel
+                        {t('jobs.cancel')}
                         <XCircle className="ml-2 h-4 w-4" />
                     </Button>
                 )}

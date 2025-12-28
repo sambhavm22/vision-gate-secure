@@ -1,0 +1,131 @@
+{
+    "app_name": "HelperHub Worker",
+    "dashboard": {
+        "welcome": "Welcome back",
+        "subtitle": "Welcome back! Here's what's happening in your area.",
+        "refresh_feed": "Refresh Feed",
+        "current_location": "Current Location",
+        "status": "Current Status",
+        "online": "Online",
+        "offline": "Offline",
+        "job_requests": "Job Requests",
+        "active_jobs": "Active Jobs",
+        "earnings": "Earnings",
+        "no_requests": "No new job requests",
+        "view_all": "View All",
+        "stats": {
+            "total_jobs": "Total Jobs",
+            "scheduled_bookings": "Scheduled bookings",
+            "rating": "Rating",
+            "avg_rating": "Average customer rating",
+            "active_status": "Active Status",
+            "visible_customer": "Visible to customers",
+            "new_opps": "New Opportunities",
+            "jobs_nearby": "Jobs available nearby"
+        },
+        "tabs": {
+            "new_requests": "New Requests",
+            "my_schedule": "My Schedule"
+        },
+        "filter": {
+            "sort_by": "Sort By",
+            "sort_placeholder": "Sort by",
+            "sort_date_asc": "Date: Earliest First",
+            "sort_date_desc": "Date: Latest First",
+            "sort_dist_asc": "Location: Closest First",
+            "service_type": "Service Type",
+            "filter_placeholder": "Filter by Service",
+            "all_services": "All Services",
+            "distance_range": "Distance Range",
+            "finding_jobs": "Finding jobs near you...",
+            "no_matching": "No matching requests",
+            "adjust_filters": "Try adjusting your filters to see more results.",
+            "no_upcoming": "No upcoming jobs",
+            "schedule_clear": "Your schedule is clear."
+        },
+        "toasts": {
+            "booking_accepted": "Booking Accepted",
+            "accepted_success": "You have successfully accepted the job.",
+            "accept_failed": "Accept Failed",
+            "booking_cancelled": "Booking Cancelled",
+            "cancelled_success": "The booking has been released.",
+            "fetch_error": "Error fetching bookings"
+        }
+    },
+    "jobs": {
+        "accept": "Accept",
+        "reject": "Reject",
+        "start": "Start Job",
+        "complete": "Complete Job",
+        "navigate": "Navigate",
+        "call": "Call Customer",
+        "location": "Location",
+        "price": "Price",
+        "new_request": "New Request",
+        "km_away": "km away",
+        "mins": "mins",
+        "accepting": "Accepting...",
+        "accept_job": "Accept Job",
+        "cancel": "Cancel"
+    },
+    "profile": {
+        "title": "Profile Settings",
+        "personal_info": "Personal Information",
+        "full_name": "Full Name",
+        "hourly_rate": "Hourly Rate (₹)",
+        "bio": "Professional Bio",
+        "save_changes": "Save Changes",
+        "services_offered": "Services Offered",
+        "service_area": "Service Area",
+        "current_area": "Current Service Area",
+        "update_location": "Update to My Current Location",
+        "verification": "Identity Verification",
+        "verify_digilocker": "Verify with DigiLocker",
+        "verified": "Verified Worker",
+        "not_verified": "Verification Required",
+        "logout": "Sign Out",
+        "back_dashboard": "Back to Dashboard",
+        "location_set": "Custom Location Set",
+        "location_updated_title": "Location Updated",
+        "location_updated_desc": "Service area set to {{area}}",
+        "save_dialog": {
+            "title": "Save Changes?",
+            "desc": "Are you sure you want to update your profile information? These changes will be visible to potential customers immediately.",
+            "review": "Review Again",
+            "confirm": "Yes, Save Changes",
+            "success_title": "Profile Updated",
+            "success_desc": "Changes saved successfully.",
+            "error_title": "Update Failed"
+        },
+        "services": {
+            "remove_title": "Remove Service?",
+            "remove_desc": "Are you sure you want to stop offering <1>{{service}}</1>?",
+            "confirm_remove": "Confirm Removal",
+            "add_title": "Add Service?",
+            "add_desc": "Would you like to start offering <1>{{service}}</1> services to customers?",
+            "not_now": "Not Now",
+            "confirm_add": "Yes, Add Service",
+            "available": "Available to Add",
+            "no_selection": "No services selected. Please add at least one.",
+            "updated_title": "Services Updated",
+            "updated_desc": "Your service offerings have been updated."
+        },
+        "location_hint": "We use your location to show you relevant job requests in your immediate area. Update this whenever you move to a different service zone.",
+        "dark_mode": {
+            "title": "Dark Mode",
+            "desc": "Adjust the interface for better visibility",
+            "switch_light": "Switch to Light",
+            "switch_dark": "Switch to Dark"
+        },
+        "verification_status": {
+            "verified_msg": "Your identity is verified.",
+            "unverified_msg": "Verify your identity to get the verified badge."
+        }
+    },
+    "common": {
+        "loading": "Loading...",
+        "success": "Success",
+        "error": "Error",
+        "back": "Back"
+    }
+}

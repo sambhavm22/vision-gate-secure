@@ -1,14 +1,8 @@
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useAuth } from "@/context/AuthContext";
+import { useServices } from "@/hooks/useServices";
+import { supabase } from "@vision-gate/supabase/client";
 import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-    Label,
-    Textarea,
-    useToast,
-    Badge,
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -18,16 +12,25 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Textarea,
+    useToast,
 } from "@vision-gate/ui";
-import { useAuth } from "@/context/AuthContext";
-import { useServices } from "@/hooks/useServices";
-import { supabase } from "@vision-gate/supabase/client";
 import { ArrowLeft, CheckCircle, Loader2, LogOut, MapPin, Moon, Plus, Save, ShieldAlert, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const { workerProfile, refreshProfile } = useAuth();
     const { services } = useServices();
     const { toast } = useToast();
@@ -68,7 +71,7 @@ export default function Profile() {
             // Try to geocode current saved location if it exists
             if ((workerProfile as any).location) {
                 // Simplified location display
-                setLocationName("Custom Location Set");
+                setLocationName(t('profile.location_set'));
             }
         }
     }, [workerProfile]);
@@ -89,7 +92,7 @@ export default function Profile() {
 
             if (error) throw error;
 
-            toast({ title: "Profile Updated", description: "Changes saved successfully." });
+            toast({ title: t('profile.save_dialog.success_title'), description: t('profile.save_dialog.success_desc') });
             await refreshProfile();
         } catch (error: any) {
             toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -111,7 +114,7 @@ export default function Profile() {
 
             if (error) throw error;
 
-            toast({ title: "Services Updated", description: "Your service offerings have been updated." });
+            toast({ title: t('profile.services.updated_title'), description: t('profile.services.updated_desc') });
             setFormData(prev => ({ ...prev, service_types: newServices }));
             await refreshProfile();
         } catch (error: any) {
@@ -182,7 +185,7 @@ export default function Profile() {
                     const area = data.address.suburb || data.address.neighbourhood || data.address.city_district || data.address.city;
                     setLocationName(area || "Location Updated");
 
-                    toast({ title: "Location Updated", description: `Service area set to ${area || "current position"}` });
+                    toast({ title: t('profile.location_updated_title'), description: t('profile.location_updated_desc', { area: area || "current position" }) });
                     await refreshProfile();
                 } catch (error: any) {
                     toast({ variant: "destructive", title: "Error", description: "Failed to update location" });
@@ -209,7 +212,7 @@ export default function Profile() {
             <div className="max-w-2xl mx-auto space-y-6">
                 <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-2">
                     <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Dashboard
+                    {t('profile.back_dashboard')}
                 </Button>
 
                 <Card className="shadow-sm">
@@ -219,16 +222,17 @@ export default function Profile() {
                                 {workerProfile.full_name?.charAt(0)}
                             </div>
                             <div>
-                                <CardTitle className="text-2xl font-bold">Profile Settings</CardTitle>
-                                <p className="text-muted-foreground">Manage your worker profile and service area</p>
+                                <CardTitle className="text-2xl font-bold">{t('profile.title')}</CardTitle>
+                                <p className="text-muted-foreground">{t('profile.personal_info')}</p>
                             </div>
                         </div>
+                        <LanguageToggle />
                     </CardHeader>
                     <CardContent className="p-6 space-y-8 bg-card">
                         {/* Personal Info */}
                         <div className="space-y-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Full Name</Label>
+                                <Label htmlFor="name">{t('profile.full_name')}</Label>
                                 <Input
                                     id="name"
                                     value={formData.full_name}
@@ -236,7 +240,7 @@ export default function Profile() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="rate">Hourly Rate (₹)</Label>
+                                <Label htmlFor="rate">{t('profile.hourly_rate')}</Label>
                                 <Input
                                     id="rate"
                                     type="number"
@@ -245,7 +249,7 @@ export default function Profile() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="bio">Professional Bio</Label>
+                                <Label htmlFor="bio">{t('profile.bio')}</Label>
                                 <Textarea
                                     id="bio"
                                     rows={4}
@@ -258,25 +262,25 @@ export default function Profile() {
                                 <AlertDialogTrigger asChild>
                                     <Button disabled={loading} className="w-full sm:w-auto">
                                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Save Profile Changes
+                                        {t('profile.save_changes')}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>Save Changes?</AlertDialogTitle>
+                                        <AlertDialogTitle>{t('profile.save_dialog.title')}</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Are you sure you want to update your profile information? These changes will be visible to potential customers immediately.
+                                            {t('profile.save_dialog.desc')}
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel>Review Again</AlertDialogCancel>
+                                        <AlertDialogCancel>{t('profile.save_dialog.review')}</AlertDialogCancel>
                                         <AlertDialogAction
                                             onClick={() => {
                                                 setIsSaveDialogOpen(false);
                                                 handleSave();
                                             }}
                                         >
-                                            Yes, Save Changes
+                                            {t('profile.save_dialog.confirm')}
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -285,7 +289,7 @@ export default function Profile() {
                             {/* Services Section */}
                             <div className="space-y-4 pt-4 border-t">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-base font-semibold">Services Offered</Label>
+                                    <Label className="text-base font-semibold">{t('profile.services_offered')}</Label>
                                 </div>
 
                                 {formData.service_types.length > 0 ? (
@@ -305,13 +309,13 @@ export default function Profile() {
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>Remove Service?</AlertDialogTitle>
+                                                            <AlertDialogTitle>{t('profile.services.remove_title')}</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                Are you sure you want to stop offering <strong>{service}</strong>?
+                                                                <span dangerouslySetInnerHTML={{ __html: t('profile.services.remove_desc', { service }) }} />
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogCancel>{t('common.back', 'Cancel')}</AlertDialogCancel>
                                                             <AlertDialogAction
                                                                 onClick={() => {
                                                                     const updated = formData.service_types.filter(s => s !== service);
@@ -319,7 +323,7 @@ export default function Profile() {
                                                                 }}
                                                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                                             >
-                                                                Confirm Removal
+                                                                {t('profile.services.confirm_remove')}
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
@@ -328,11 +332,11 @@ export default function Profile() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground italic">No services selected. Please add at least one.</p>
+                                    <p className="text-sm text-muted-foreground italic">{t('profile.services.no_selection')}</p>
                                 )}
 
                                 <div className="space-y-2">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Available to Add</p>
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('profile.services.available')}</p>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                         {services
                                             .filter(s => !formData.service_types.includes(s.name))
@@ -351,20 +355,20 @@ export default function Profile() {
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>Add Service?</AlertDialogTitle>
+                                                            <AlertDialogTitle>{t('profile.services.add_title')}</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                Would you like to start offering <strong>{service.name}</strong> services to customers?
+                                                                <span dangerouslySetInnerHTML={{ __html: t('profile.services.add_desc', { service: service.name }) }} />
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>Not Now</AlertDialogCancel>
+                                                            <AlertDialogCancel>{t('profile.services.not_now')}</AlertDialogCancel>
                                                             <AlertDialogAction
                                                                 onClick={() => {
                                                                     const updated = [...formData.service_types, service.name];
                                                                     handleUpdateServices(updated);
                                                                 }}
                                                             >
-                                                                Yes, Add Service
+                                                                {t('profile.services.confirm_add')}
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
@@ -377,14 +381,14 @@ export default function Profile() {
 
                         {/* Location Section */}
                         <div className="pt-6 border-t">
-                            <h3 className="text-lg font-semibold mb-4">Service Location</h3>
+                            <h3 className="text-lg font-semibold mb-4">{t('profile.service_area')}</h3>
                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl border">
                                 <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center text-green-700 dark:text-green-400">
                                         <MapPin className="h-5 w-5" />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Service Area</p>
+                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('profile.current_area')}</p>
                                         <p className="font-semibold">{locationName}</p>
                                     </div>
                                 </div>
@@ -395,31 +399,30 @@ export default function Profile() {
                                     className="w-full sm:w-auto"
                                 >
                                     {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-                                    Update to My Current Location
+                                    {t('profile.update_location')}
                                 </Button>
                             </div>
                             <p className="text-xs text-muted-foreground mt-3 px-1">
-                                We use your location to show you relevant job requests in your immediate area.
-                                Update this whenever you move to a different service zone.
+                                {t('profile.location_hint')}
                             </p>
                         </div>
 
                         {/* Verification Section */}
                         <div className="pt-6 border-t">
-                            <h3 className="text-lg font-semibold mb-4">Identity Verification</h3>
+                            <h3 className="text-lg font-semibold mb-4">{t('profile.verification')}</h3>
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl border">
                                 <div className="flex items-center gap-3">
                                     <div className={`h-10 w-10 rounded-full flex items-center justify-center ${workerProfile.is_verified ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400'}`}>
                                         {workerProfile.is_verified ? <CheckCircle className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
                                     </div>
                                     <div>
-                                        <p className="font-semibold">{workerProfile.is_verified ? "Verified Worker" : "Verification Required"}</p>
-                                        <p className="text-xs text-muted-foreground">{workerProfile.is_verified ? "Your identity is verified via DigiLocker." : "Verify your identity to get the verified badge and more trust."}</p>
+                                        <p className="font-semibold">{workerProfile.is_verified ? t('profile.verified') : t('profile.not_verified')}</p>
+                                        <p className="text-xs text-muted-foreground">{workerProfile.is_verified ? t('profile.verification_status.verified_msg') : t('profile.verification_status.unverified_msg')}</p>
                                     </div>
                                 </div>
                                 {!workerProfile.is_verified && (
                                     <Button onClick={initiateVerification} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
-                                        Verify with DigiLocker
+                                        {t('profile.verify_digilocker')}
                                     </Button>
                                 )}
                             </div>
@@ -433,8 +436,8 @@ export default function Profile() {
                                         {darkMode ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
                                     </div>
                                     <div>
-                                        <p className="font-semibold">Dark Mode</p>
-                                        <p className="text-xs text-muted-foreground">Adjust the interface for better visibility</p>
+                                        <p className="font-semibold">{t('profile.dark_mode.title')}</p>
+                                        <p className="text-xs text-muted-foreground">{t('profile.dark_mode.desc')}</p>
                                     </div>
                                 </div>
                                 <Button
@@ -442,18 +445,18 @@ export default function Profile() {
                                     size="sm"
                                     onClick={() => setDarkMode(!darkMode)}
                                 >
-                                    {darkMode ? "Switch to Light" : "Switch to Dark"}
+                                    {darkMode ? t('profile.dark_mode.switch_light') : t('profile.dark_mode.switch_dark')}
                                 </Button>
                             </div>
 
                             <Button variant="destructive" onClick={handleLogout} className="w-full flex items-center justify-center gap-2">
                                 <LogOut className="h-4 w-4" />
-                                Sign Out
+                                {t('profile.logout')}
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 }

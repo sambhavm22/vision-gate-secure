@@ -3,6 +3,7 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, Dialog
 import { format } from "date-fns";
 import { ArrowLeft, Clock, MapPin, Star, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 interface Booking {
@@ -33,6 +34,7 @@ interface Booking {
 }
 
 const MyBookings = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -214,16 +216,16 @@ const MyBookings = () => {
         </Button>
 
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">My Bookings</h1>
-          <p className="text-muted-foreground">View and manage your service bookings</p>
+          <h1 className="text-3xl font-bold">{t('bookings.my_bookings')}</h1>
+          <p className="text-muted-foreground">{t('bookings.subtitle')}</p>
         </div>
 
         {bookings.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">No bookings yet</p>
+              <p className="text-muted-foreground mb-4">{t('bookings.no_bookings')}</p>
               <Button onClick={() => navigate("/dashboard")}>
-                Book Your First Service
+                {t('bookings.book_first')}
               </Button>
             </CardContent>
           </Card>
@@ -237,7 +239,7 @@ const MyBookings = () => {
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">{booking.service?.name || 'Service Request'}</CardTitle>
+                    <CardTitle className="text-xl">{booking.service?.name ? t(`services.${booking.service.name}`, booking.service.name) : t('bookings.service_request')}</CardTitle>
                     <div className="flex items-center gap-2">
                       {booking.status === "completed" && !booking.rating && (
                         <Button
@@ -246,7 +248,7 @@ const MyBookings = () => {
                           onClick={(e) => openRatingDialog(booking.id, e)}
                           className="mr-2 text-yellow-600 border-yellow-200 hover:bg-yellow-50"
                         >
-                          <Star className="h-4 w-4 mr-1" /> Rate Worker
+                          <Star className="h-4 w-4 mr-1" /> {t('bookings.rate_worker')}
                         </Button>
                       )}
                       {booking.rating && (
@@ -255,7 +257,7 @@ const MyBookings = () => {
                         </div>
                       )}
                       <Badge variant={getStatusVariant(booking.status) as any}>
-                        {booking.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        {t(`status.${booking.status}`, booking.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()))}
                       </Badge>
                     </div>
                   </div>
@@ -267,7 +269,7 @@ const MyBookings = () => {
                         <>
                           <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                           <div>
-                            <p className="text-sm text-muted-foreground">Helper</p>
+                            <p className="text-sm text-muted-foreground">{t('bookings.helper')}</p>
                             <p className="font-medium">{booking.worker.full_name}</p>
                             <div className="flex items-center text-xs text-yellow-600">
                               <span className="font-bold mr-1">{booking.worker.rating}</span> ★
@@ -278,8 +280,8 @@ const MyBookings = () => {
                         <>
                           <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                           <div>
-                            <p className="text-sm text-muted-foreground">Helper</p>
-                            <p className="italic text-gray-500">Searching...</p>
+                            <p className="text-sm text-muted-foreground">{t('bookings.helper')}</p>
+                            <p className="italic text-gray-500">{t('bookings.searching')}</p>
                           </div>
                         </>
                       )}
@@ -287,24 +289,24 @@ const MyBookings = () => {
                     <div className="flex items-start gap-2">
                       <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Scheduled For</p>
+                        <p className="text-sm text-muted-foreground">{t('bookings.scheduled_for')}</p>
                         <p className="font-medium">
                           {new Date(booking.scheduled_at).toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    {(booking.notes || 'Location not specified') && (
+                    {(booking.notes || t('bookings.location_not_specified')) && (
                       <div className="flex items-start gap-2 md:col-span-2">
                         <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                         <div>
-                          <p className="text-sm text-muted-foreground">Details / Location</p>
+                          <p className="text-sm text-muted-foreground">{t('bookings.details_location')}</p>
                           <p className="font-medium">{booking.notes}</p>
                         </div>
                       </div>
                     )}
 
                     <div className="md:col-span-2 pt-2 border-t flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total Amount</span>
+                      <span className="text-sm text-muted-foreground">{t('bookings.total_amount')}</span>
                       <span className="text-lg font-bold text-primary">₹{booking.total_amount}</span>
                     </div>
                   </div>
@@ -319,19 +321,19 @@ const MyBookings = () => {
       <Dialog open={!!selectedBooking} onOpenChange={(open) => !open && setSelectedBooking(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Booking Details</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">{t('bookings.booking_details')}</DialogTitle>
           </DialogHeader>
 
           {selectedBooking && (
             <div className="space-y-6 pt-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-semibold">{selectedBooking.service?.name}</h3>
-                  <p className="text-sm text-muted-foreground">Booking ID: {selectedBooking.id.slice(0, 8)}...</p>
+                  <h3 className="text-lg font-semibold">{selectedBooking.service?.name ? t(`services.${selectedBooking.service.name}`, selectedBooking.service.name) : ""}</h3>
+                  <p className="text-sm text-muted-foreground">{t('bookings.booking_id')}: {selectedBooking.id.slice(0, 8)}...</p>
                 </div>
                 <div className="text-right">
                   <Badge variant={getStatusVariant(selectedBooking.status) as any} className="capitalize mb-2 block">
-                    {selectedBooking.status.replace('_', ' ')}
+                    {t(`status.${selectedBooking.status}`, selectedBooking.status.replace('_', ' '))}
                   </Badge>
                   {selectedBooking.status === "completed" && !selectedBooking.rating && (
                     <Button
@@ -340,7 +342,7 @@ const MyBookings = () => {
                       className="text-xs h-7"
                       onClick={(e) => openRatingDialog(selectedBooking.id, e)}
                     >
-                      Rate Now
+                      {t('bookings.rate_now')}
                     </Button>
                   )}
                 </div>
@@ -348,7 +350,7 @@ const MyBookings = () => {
 
               {selectedBooking.rating && (
                 <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl">
-                  <p className="text-xs uppercase font-bold text-yellow-700 mb-1">You Rated This Job</p>
+                  <p className="text-xs uppercase font-bold text-yellow-700 mb-1">{t('bookings.you_rated')}</p>
                   <div className="flex items-center gap-1 mb-2">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
@@ -367,19 +369,19 @@ const MyBookings = () => {
                 <div className="flex items-start gap-3">
                   <Clock className="h-5 w-5 text-primary mt-0.5" />
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Scheduled For</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">{t('bookings.scheduled_for')}</p>
                     <p className="font-medium">{format(new Date(selectedBooking.scheduled_at), "PPP p")}</p>
-                    <p className="text-sm text-muted-foreground">{selectedBooking.duration_minutes} Minutes Duration</p>
+                    <p className="text-sm text-muted-foreground">{t('bookings.minutes_duration', { minutes: selectedBooking.duration_minutes })}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-primary mt-0.5" />
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Service Location</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">{t('bookings.service_location')}</p>
                     {selectedBooking.address ? (
                       <>
-                        <p className="font-semibold text-primary">{selectedBooking.address.label || 'Home'}</p>
+                        <p className="font-semibold text-primary">{selectedBooking.address.label || t('address.home')}</p>
                         <p className="font-medium">{selectedBooking.address.address_line1}</p>
                         {selectedBooking.address.address_line2 && <p className="text-sm">{selectedBooking.address.address_line2}</p>}
                         <p className="text-sm text-muted-foreground">
@@ -387,7 +389,7 @@ const MyBookings = () => {
                         </p>
                       </>
                     ) : (
-                      <p className="font-medium italic text-muted-foreground">Location details not available in record</p>
+                      <p className="font-medium italic text-muted-foreground">{t('bookings.location_not_specified')}</p>
                     )}
                   </div>
                 </div>
@@ -403,7 +405,7 @@ const MyBookings = () => {
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs uppercase text-muted-foreground font-bold">Assigned Helper</p>
+                    <p className="text-xs uppercase text-muted-foreground font-bold">{t('bookings.assigned_helper')}</p>
                     <p className="font-bold">{selectedBooking.worker.full_name}</p>
                     <div className="flex items-center gap-1 text-sm text-yellow-600">
                       <span className="font-bold">{selectedBooking.worker.rating}</span> ★
@@ -413,23 +415,23 @@ const MyBookings = () => {
               ) : (
                 <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3">
                   <div className="animate-pulse h-4 w-4 bg-blue-400 rounded-full" />
-                  <p className="text-blue-700 text-sm font-medium">Looking for a nearby helper...</p>
+                  <p className="text-blue-700 text-sm font-medium">{t('bookings.looking_for')}</p>
                 </div>
               )}
 
               {selectedBooking.notes && (
                 <div className="space-y-1">
-                  <p className="text-xs uppercase text-muted-foreground font-bold">Additional Notes</p>
+                  <p className="text-xs uppercase text-muted-foreground font-bold">{t('bookings.additional_notes')}</p>
                   <p className="text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 italic">"{selectedBooking.notes}"</p>
                 </div>
               )}
 
               <div className="pt-4 border-t flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase text-muted-foreground font-bold">Total Payable</p>
+                  <p className="text-xs uppercase text-muted-foreground font-bold">{t('bookings.total_payable')}</p>
                   <p className="text-2xl font-black text-primary">₹{selectedBooking.total_amount}</p>
                 </div>
-                <Button onClick={() => setSelectedBooking(null)}>Close</Button>
+                <Button onClick={() => setSelectedBooking(null)}>{t('bookings.close')}</Button>
               </div>
             </div>
           )}
@@ -440,7 +442,7 @@ const MyBookings = () => {
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-center">Rate your Experience</DialogTitle>
+            <DialogTitle className="text-center">{t('rating.title')}</DialogTitle>
           </DialogHeader>
           <div className="py-6 flex flex-col items-center">
             <div className="flex gap-2 mb-6">
@@ -452,20 +454,20 @@ const MyBookings = () => {
                 />
               ))}
             </div>
-            <p className="font-medium text-lg mb-4">{ratingVal === 5 ? "Excellent!" : ratingVal === 4 ? "Good" : ratingVal === 3 ? "Average" : "Poor"}</p>
+            <p className="font-medium text-lg mb-4">{ratingVal === 5 ? t('rating.excellent') : ratingVal === 4 ? t('rating.good') : ratingVal === 3 ? t('rating.average') : t('rating.poor')}</p>
 
             <textarea
               className="w-full border rounded-md p-3 text-sm focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px]"
-              placeholder="Share more details about the service (optional)..."
+              placeholder={t('rating.placeholder')}
               value={reviewVal}
               onChange={(e) => setReviewVal(e.target.value)}
             />
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowRatingDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowRatingDialog(false)}>{t('rating.cancel')}</Button>
             <Button onClick={handleSubmitRating} disabled={isSubmittingRating}>
-              {isSubmittingRating ? "Submitting..." : "Submit Rating"}
+              {isSubmittingRating ? t('common.loading') : t('rating.submit')}
             </Button>
           </div>
         </DialogContent>

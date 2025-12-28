@@ -2,6 +2,7 @@ import { supabase } from "@vision-gate/supabase/client";
 import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, useToast } from "@vision-gate/ui";
 import { ArrowRight, Briefcase, Home, MapPin, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Address {
     id: string;
@@ -42,6 +43,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
     });
     const [saving, setSaving] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (open) {
@@ -303,7 +305,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
             <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {view === "list" ? "Select Service Location" : (initialAddress ? "Edit Address" : "Add New Address")}
+                        {view === "list" ? t('address.select_location') : (initialAddress ? t('address.edit_address') : t('address.add_new'))}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -333,14 +335,14 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                                 }}
                             >
                                 <div className="absolute top-0 right-0 p-2">
-                                    <Badge variant="default" className="text-[10px] bg-primary">Suggested</Badge>
+                                    <Badge variant="default" className="text-[10px] bg-primary">{t('address.suggested')}</Badge>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                         <MapPin className="h-5 w-5 animate-pulse" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Use Current Location</p>
+                                        <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">{t('address.use_current')}</p>
                                         <p className="text-sm font-medium line-clamp-1">{currentLocation}</p>
                                     </div>
                                     <ArrowRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -350,7 +352,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
 
                         <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
                             <span className="h-px flex-1 bg-border"></span>
-                            <span>Saved Addresses</span>
+                            <span>{t('address.saved_addresses')}</span>
                             <span className="h-px flex-1 bg-border"></span>
                         </div>
 
@@ -370,7 +372,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                             }}
                         >
                             <Plus className="h-4 w-4 mr-2" />
-                            Add New Address
+                            {t('address.add_new')}
                         </Button>
 
                         {loading ? (
@@ -378,7 +380,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                         ) : addresses.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">
                                 <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p>No saved addresses found.</p>
+                                <p>{t('address.no_saved')}</p>
                             </div>
                         ) : (
                             <div className="grid gap-3">
@@ -422,7 +424,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                                 disabled={isLocating}
                             >
                                 {isLocating ? <span className="animate-spin mr-2">⏳</span> : <MapPin className="h-4 w-4 mr-2" />}
-                                Use Current Location
+                                {t('address.use_current')}
                             </Button>
                         </div>
 
@@ -437,14 +439,14 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                                             className="cursor-pointer px-4 py-1.5"
                                             onClick={() => setNewAddress({ ...newAddress, label: l })}
                                         >
-                                            {l}
+                                            {t(`address.${l.toLowerCase()}`, l)}
                                         </Badge>
                                     ))}
                                 </div>
                             </div>
 
                             <div className="space-y-1">
-                                <Label htmlFor="address">Address Line</Label>
+                                <Label htmlFor="address">{t('address.address_line')}</Label>
                                 <Input
                                     id="address"
                                     placeholder="House/Flat No, Street, Area"
@@ -455,7 +457,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                    <Label htmlFor="city">City</Label>
+                                    <Label htmlFor="city">{t('address.city')}</Label>
                                     <Input
                                         id="city"
                                         placeholder="City"
@@ -464,7 +466,7 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <Label htmlFor="zip">Pincode</Label>
+                                    <Label htmlFor="zip">{t('address.pincode')}</Label>
                                     <Input
                                         id="zip"
                                         placeholder="Zip Code"
@@ -477,9 +479,9 @@ export function AddressSelectionDialog({ open, onOpenChange, onSelect, currentLo
                         </div>
 
                         <div className="flex gap-3 pt-4 border-t mt-4">
-                            <Button variant="ghost" className="flex-1" onClick={() => setView("list")}>Cancel</Button>
+                            <Button variant="ghost" className="flex-1" onClick={() => setView("list")}>{t('rating.cancel')}</Button>
                             <Button className="flex-1 bg-primary" onClick={handleSaveAddress} disabled={saving}>
-                                {saving ? "Saving..." : "Save & Select"}
+                                {saving ? t('common.loading') : t('address.save_select')}
                             </Button>
                         </div>
                     </div>
