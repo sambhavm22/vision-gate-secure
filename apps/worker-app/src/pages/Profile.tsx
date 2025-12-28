@@ -1,23 +1,47 @@
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Textarea, useToast } from "@vision-gate/ui";
+import {
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Textarea,
+    useToast,
+    Badge,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@vision-gate/ui";
 import { useAuth } from "@/context/AuthContext";
+import { useServices } from "@/hooks/useServices";
 import { supabase } from "@vision-gate/supabase/client";
-import { ArrowLeft, CheckCircle, Loader2, LogOut, MapPin, Moon, Save, ShieldAlert, Sun } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, LogOut, MapPin, Moon, Plus, Save, ShieldAlert, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
     const navigate = useNavigate();
     const { workerProfile, refreshProfile } = useAuth();
+    const { services } = useServices();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [locationName, setLocationName] = useState("Not set");
+    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
 
     const [formData, setFormData] = useState({
         full_name: "",
         bio: "",
         hourly_rate: 0,
+        service_types: [] as string[],
     });
 
     const [darkMode, setDarkMode] = useState(() => {
@@ -39,6 +63,7 @@ export default function Profile() {
                 full_name: workerProfile.full_name || "",
                 bio: workerProfile.bio || "",
                 hourly_rate: workerProfile.hourly_rate || 0,
+                service_types: workerProfile.service_types || [],
             });
             // Try to geocode current saved location if it exists
             if ((workerProfile as any).location) {
@@ -58,12 +83,36 @@ export default function Profile() {
                     full_name: formData.full_name,
                     bio: formData.bio,
                     hourly_rate: formData.hourly_rate,
+                    // service_types removed from here as they are handled immediately now
                 })
                 .eq("id", workerProfile.id);
 
             if (error) throw error;
 
             toast({ title: "Profile Updated", description: "Changes saved successfully." });
+            await refreshProfile();
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateServices = async (newServices: string[]) => {
+        if (!workerProfile) return;
+        setLoading(true);
+        try {
+            const { error } = await (supabase
+                .from("workers_public") as any)
+                .update({
+                    service_types: newServices,
+                })
+                .eq("id", workerProfile.id);
+
+            if (error) throw error;
+
+            toast({ title: "Services Updated", description: "Your service offerings have been updated." });
+            setFormData(prev => ({ ...prev, service_types: newServices }));
             await refreshProfile();
         } catch (error: any) {
             toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -205,10 +254,125 @@ export default function Profile() {
                                     placeholder="Tell customers about your experience..."
                                 />
                             </div>
-                            <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto">
-                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Save Profile Changes
-                            </Button>
+                            <AlertDialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                                <AlertDialogTrigger asChild>
+                                    <Button disabled={loading} className="w-full sm:w-auto">
+                                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                        Save Profile Changes
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Save Changes?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to update your profile information? These changes will be visible to potential customers immediately.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Review Again</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => {
+                                                setIsSaveDialogOpen(false);
+                                                handleSave();
+                                            }}
+                                        >
+                                            Yes, Save Changes
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+
+                            {/* Services Section */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-base font-semibold">Services Offered</Label>
+                                </div>
+
+                                {formData.service_types.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {formData.service_types.map((service) => (
+                                            <Badge key={service} variant="secondary" className="pl-3 pr-2 py-1.5 gap-2 text-sm bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                                                {service}
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <button
+                                                            className="hover:text-destructive transition-colors p-0.5 rounded-full hover:bg-destructive/10"
+                                                            title="Remove service"
+                                                            disabled={loading}
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Remove Service?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Are you sure you want to stop offering <strong>{service}</strong>?
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                onClick={() => {
+                                                                    const updated = formData.service_types.filter(s => s !== service);
+                                                                    handleUpdateServices(updated);
+                                                                }}
+                                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                            >
+                                                                Confirm Removal
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">No services selected. Please add at least one.</p>
+                                )}
+
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Available to Add</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {services
+                                            .filter(s => !formData.service_types.includes(s.name))
+                                            .map(service => (
+                                                <AlertDialog key={service.id}>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="justify-start h-9 text-xs hover:border-primary hover:text-primary transition-all"
+                                                            disabled={loading}
+                                                        >
+                                                            <Plus size={12} className="mr-2" />
+                                                            {service.name}
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Add Service?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Would you like to start offering <strong>{service.name}</strong> services to customers?
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Not Now</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                onClick={() => {
+                                                                    const updated = [...formData.service_types, service.name];
+                                                                    handleUpdateServices(updated);
+                                                                }}
+                                                            >
+                                                                Yes, Add Service
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Location Section */}
