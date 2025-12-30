@@ -7,9 +7,12 @@
     ],
     "scripts": {
         "build": "npm run build --workspaces",
-        "dev": "concurrently \"npm run dev --workspace=@vision-gate/worker-app\" \"npm run dev --workspace=vite_react_shadcn_ts\""
+        "all": "concurrently \"npm run dev --workspace=@vision-gate/worker-app\" \"npm run dev --workspace=vite_react_shadcn_ts\""
     },
     "devDependencies": {
         "concurrently": "^9.2.1"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.89.0"
     }
 }

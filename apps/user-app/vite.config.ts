@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   optimizeDeps: {
+    include: ["@supabase/supabase-js"],
     exclude: ["@vision-gate/supabase"],
   },
   resolve: {

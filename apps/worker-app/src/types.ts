@@ -1,4 +1,4 @@
-export interface WorkerProfile {
+export type WorkerProfile = {
     id: string;
     user_id: string;
     full_name: string;
@@ -10,9 +10,9 @@ export interface WorkerProfile {
     is_verified: boolean;
     bio?: string;
     created_at: string;
-}
+};
 
-export interface Booking {
+export type Booking = {
     id: string;
     service_id: number;
     address_id: string;
@@ -33,4 +33,21 @@ export interface Booking {
         city: string;
         location: any;
     };
-}
+};
+
+export type RecurringBooking = {
+    id: string;
+    rrule: string;
+    start_date: string;
+    end_date: string | null;
+    preferred_time_start: string;
+    duration_minutes: number;
+    total_per_occurrence: number;
+    status: 'active' | 'paused' | 'cancelled' | 'completed';
+    address?: {
+        address_line1: string;
+        city: string;
+    };
+    service_ids: number[];
+    service_name?: string; // Optional if we join
+};

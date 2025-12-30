@@ -5,6 +5,7 @@ import { defineConfig } from "vite"
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
+    include: ["@supabase/supabase-js"],
     exclude: ["@vision-gate/supabase"],
   },
   resolve: {

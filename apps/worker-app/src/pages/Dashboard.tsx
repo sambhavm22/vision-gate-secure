@@ -1,4 +1,6 @@
 import { BookingCard } from "@/components/BookingCard";
+import { RecurringJobCard } from "@/components/RecurringJobCard";
+import type { RecurringBooking } from "@/types";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
@@ -15,6 +17,7 @@ export default function Dashboard() {
     const { t } = useTranslation();
     const [marketBookings, setMarketBookings] = useState<any[]>([]);
     const [myBookings, setMyBookings] = useState<any[]>([]);
+    const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [currentLocationName, setCurrentLocationName] = useState(t('common.loading'));
@@ -153,6 +156,20 @@ export default function Dashboard() {
 
             if (myError) throw myError;
             setMyBookings(myData || []);
+
+            // 3. Fetch Recurring Series
+            const { data: recurringData, error: recurringError } = await supabase
+                .from("recurring_bookings")
+                .select(`
+                    *,
+                    address:addresses(address_line1, city)
+                 `)
+                .eq("preferred_worker_id", workerProfile.id)
+                .neq("status", "cancelled")
+                .order("created_at", { ascending: false });
+
+            if (recurringError) throw recurringError;
+            setRecurringBookings(recurringData as any || []);
 
         } catch (error: any) {
             toast({ variant: "destructive", title: t('dashboard.toasts.fetch_error'), description: error.message });
@@ -341,9 +358,10 @@ export default function Dashboard() {
 
                 {/* Main Content Tabs */}
                 <Tabs defaultValue="marketplace" className="w-full">
-                    <TabsList className="grid w-full md:w-[400px] grid-cols-2 mb-6">
+                    <TabsList className="grid w-full md:w-[600px] grid-cols-3 mb-6">
                         <TabsTrigger value="marketplace">{t('dashboard.tabs.new_requests')} ({marketBookings.length})</TabsTrigger>
                         <TabsTrigger value="my-jobs">{t('dashboard.tabs.my_schedule')} ({myBookings.length})</TabsTrigger>
+                        <TabsTrigger value="recurring">Recurring Series ({recurringBookings.length})</TabsTrigger>
                     </TabsList>
 
 
@@ -450,6 +468,24 @@ export default function Dashboard() {
                                         onCancel={handleCancel}
                                         isProcessing={processingId === booking.id}
                                     />
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="recurring" className="space-y-4 min-h-[300px]">
+                        {isLoading ? (
+                            <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
+                        ) : recurringBookings.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/30 text-center">
+                                <RefreshCw className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
+                                <h3 className="text-lg font-semibold">No Recurring Series</h3>
+                                <p className="text-muted-foreground">You don't have any active recurring assignments.</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+                                {recurringBookings.map(booking => (
+                                    <RecurringJobCard key={booking.id} booking={booking} />
                                 ))}
                             </div>
                         )}

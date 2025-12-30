@@ -155,6 +155,185 @@ export type Database = {
                     updated_at?: string
                 }
             }
+            recurring_bookings: {
+                Row: {
+                    id: string
+                    user_id: string
+                    service_ids: number[]
+                    address_id: string
+                    preferred_worker_id: string | null
+                    rrule: string
+                    timezone: string
+                    start_date: string
+                    end_date: string | null
+                    max_occurrences: number | null
+                    preferred_time_start: string
+                    preferred_time_end: string
+                    duration_minutes: number
+                    price_snapshot: Json
+                    total_per_occurrence: number
+                    status: 'active' | 'paused' | 'cancelled' | 'completed'
+                    stripe_customer_id: string | null
+                    stripe_payment_method_id: string | null
+                    notes: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    service_ids: number[]
+                    address_id: string
+                    preferred_worker_id?: string | null
+                    rrule: string
+                    timezone?: string
+                    start_date: string
+                    end_date?: string | null
+                    max_occurrences?: number | null
+                    preferred_time_start: string
+                    preferred_time_end: string
+                    duration_minutes: number
+                    price_snapshot: Json
+                    total_per_occurrence: number
+                    status?: 'active' | 'paused' | 'cancelled' | 'completed'
+                    stripe_customer_id?: string | null
+                    stripe_payment_method_id?: string | null
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    service_ids?: number[]
+                    address_id?: string
+                    preferred_worker_id?: string | null
+                    rrule?: string
+                    timezone?: string
+                    start_date?: string
+                    end_date?: string | null
+                    max_occurrences?: number | null
+                    preferred_time_start?: string
+                    preferred_time_end?: string
+                    duration_minutes?: number
+                    price_snapshot?: Json
+                    total_per_occurrence?: number
+                    status?: 'active' | 'paused' | 'cancelled' | 'completed'
+                    stripe_customer_id?: string | null
+                    stripe_payment_method_id?: string | null
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            recurring_booking_occurrences: {
+                Row: {
+                    id: string
+                    recurring_booking_id: string
+                    occurrence_index: number
+                    scheduled_for: string
+                    booking_id: string | null
+                    worker_id: string | null
+                    status: 'pending' | 'scheduled' | 'created' | 'skipped' | 'failed'
+                    failure_reason: string | null
+                    retry_count: number
+                    last_retry_at: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    recurring_booking_id: string
+                    occurrence_index: number
+                    scheduled_for: string
+                    booking_id?: string | null
+                    worker_id?: string | null
+                    status?: 'pending' | 'scheduled' | 'created' | 'skipped' | 'failed'
+                    failure_reason?: string | null
+                    retry_count?: number
+                    last_retry_at?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    recurring_booking_id?: string
+                    occurrence_index?: number
+                    scheduled_for?: string
+                    booking_id?: string | null
+                    worker_id?: string | null
+                    status?: 'pending' | 'scheduled' | 'created' | 'skipped' | 'failed'
+                    failure_reason?: string | null
+                    retry_count?: number
+                    last_retry_at?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            worker_recurring_preferences: {
+                Row: {
+                    id: string
+                    worker_id: string
+                    recurring_booking_id: string
+                    accepts_series: boolean
+                    blocked_dates: string[] | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    worker_id: string
+                    recurring_booking_id: string
+                    accepts_series?: boolean
+                    blocked_dates?: string[] | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    worker_id?: string
+                    recurring_booking_id?: string
+                    accepts_series?: boolean
+                    blocked_dates?: string[] | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            recurring_booking_audit_log: {
+                Row: {
+                    id: string
+                    recurring_booking_id: string
+                    occurrence_id: string | null
+                    action: string
+                    old_state: Json | null
+                    new_state: Json | null
+                    metadata: Json | null
+                    created_by: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    recurring_booking_id: string
+                    occurrence_id?: string | null
+                    action: string
+                    old_state?: Json | null
+                    new_state?: Json | null
+                    metadata?: Json | null
+                    created_by?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    recurring_booking_id?: string
+                    occurrence_id?: string | null
+                    action?: string
+                    old_state?: Json | null
+                    new_state?: Json | null
+                    metadata?: Json | null
+                    created_by?: string | null
+                    created_at?: string
+                }
+            }
         }
         Views: {
             [_ in never]: never
