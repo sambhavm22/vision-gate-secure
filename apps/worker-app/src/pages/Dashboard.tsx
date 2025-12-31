@@ -1,8 +1,8 @@
 import { BookingCard } from "@/components/BookingCard";
-import { RecurringJobCard } from "@/components/RecurringJobCard";
-import type { RecurringBooking } from "@/types";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { RecurringJobCard } from "@/components/RecurringJobCard";
 import { useAuth } from "@/context/AuthContext";
+import type { RecurringBooking } from "@/types";
 import { supabase } from "@vision-gate/supabase/client";
 import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
@@ -18,6 +18,7 @@ export default function Dashboard() {
     const [marketBookings, setMarketBookings] = useState<any[]>([]);
     const [myBookings, setMyBookings] = useState<any[]>([]);
     const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
+    const [marketSubscriptions, setMarketSubscriptions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [currentLocationName, setCurrentLocationName] = useState(t('common.loading'));
@@ -100,30 +101,27 @@ export default function Dashboard() {
                             })
                             .eq("id", workerProfile.id);
 
-                        if (error) {
-                            console.error("Failed to update worker location:", error);
-                        }
+                        if (error) console.error("Error updating worker location:", error);
                     }
                 } catch (error) {
-                    console.error("Geocoding failed:", error);
-                    setCurrentLocationName(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                    console.error("Error detecting location address:", error);
                 } finally {
                     setIsLocating(false);
                 }
             },
             (error) => {
                 console.error("Geolocation error:", error);
-
-                // Only reset if we don't have a stored location
-                if (!localStorage.getItem("workerLocationName")) {
-                    setCurrentLocationName("Mumbai (Default)");
-                }
-
                 setIsLocating(false);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     };
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const fetchBookings = async () => {
         if (!workerProfile) return;
@@ -170,6 +168,17 @@ export default function Dashboard() {
 
             if (recurringError) throw recurringError;
             setRecurringBookings(recurringData as any || []);
+
+            // 4. Fetch Market Subscriptions
+            const { data: subData, error: subError } = await supabase.rpc(
+                "get_market_subscriptions",
+                {
+                    p_worker_id: workerProfile.id,
+                    p_radius_km: filterDistance
+                } as any
+            );
+            if (subError) throw subError;
+            setMarketSubscriptions(subData || []);
 
         } catch (error: any) {
             toast({ variant: "destructive", title: t('dashboard.toasts.fetch_error'), description: error.message });
@@ -220,6 +229,30 @@ export default function Dashboard() {
             await fetchBookings();
         } catch (error: any) {
             toast({ variant: "destructive", title: t('dashboard.toasts.accept_failed'), description: error.message });
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleAcceptSubscription = async (subscriptionId: string) => {
+        if (!workerProfile) return;
+        setProcessingId(subscriptionId);
+        try {
+            const { error } = await supabase.rpc("manage_recurring_booking", {
+                p_recurring_id: subscriptionId,
+                p_action: 'accept'
+            } as any);
+
+            if (error) throw error;
+
+            toast({
+                title: "Subscription Accepted",
+                description: "You have successfully accepted the subscription series.",
+            });
+
+            await fetchBookings();
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Accept Failed", description: error.message });
         } finally {
             setProcessingId(null);
         }
@@ -358,12 +391,63 @@ export default function Dashboard() {
 
                 {/* Main Content Tabs */}
                 <Tabs defaultValue="marketplace" className="w-full">
-                    <TabsList className="grid w-full md:w-[600px] grid-cols-3 mb-6">
-                        <TabsTrigger value="marketplace">{t('dashboard.tabs.new_requests')} ({marketBookings.length})</TabsTrigger>
-                        <TabsTrigger value="my-jobs">{t('dashboard.tabs.my_schedule')} ({myBookings.length})</TabsTrigger>
-                        <TabsTrigger value="recurring">Recurring Series ({recurringBookings.length})</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 mb-6">
+                        <TabsTrigger value="marketplace" className="gap-2">
+                            <Briefcase className="h-4 w-4" />
+                            {!isMobile && t('dashboard.tabs.marketplace')}
+                        </TabsTrigger>
+                        <TabsTrigger value="subscription-market" className="gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            {!isMobile && "Market Subs"}
+                        </TabsTrigger>
+                        <TabsTrigger value="my-jobs" className="gap-2">
+                            <CalendarClock className="h-4 w-4" />
+                            {!isMobile && t('dashboard.tabs.my_jobs')}
+                        </TabsTrigger>
+                        <TabsTrigger value="recurring" className="gap-2">
+                            <CalendarClock className="h-4 w-4" />
+                            {!isMobile && "Fixed Subs"}
+                        </TabsTrigger>
                     </TabsList>
 
+
+                    <TabsContent value="subscription-market" className="space-y-4 min-h-[300px]">
+                        <div className="flex justify-end mb-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={fetchBookings}
+                                disabled={isLoading}
+                                className="text-muted-foreground hover:text-primary"
+                            >
+                                <RefreshCw className={`mr-2 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                                {t('dashboard.refresh_feed', 'Refresh Feed')}
+                            </Button>
+                        </div>
+                        {isLoading ? (
+                            <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
+                        ) : marketSubscriptions.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/30 text-center">
+                                <RefreshCw className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
+                                <h3 className="text-lg font-semibold">No Market Subscriptions</h3>
+                                <p className="text-muted-foreground max-w-sm mt-1">
+                                    Refresh to check if any user has requested a new subscription in your area.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+                                {marketSubscriptions.map((sub: any) => (
+                                    <RecurringJobCard
+                                        key={sub.id}
+                                        booking={sub}
+                                        onAccept={() => handleAcceptSubscription(sub.id)}
+                                        isProcessing={processingId === sub.id}
+                                        type="market"
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
 
                     <TabsContent value="marketplace" className="space-y-4 min-h-[300px]">
                         {/* Filter and Sort UI */}
@@ -450,6 +534,18 @@ export default function Dashboard() {
 
 
                     <TabsContent value="my-jobs" className="space-y-4 min-h-[300px]">
+                        <div className="flex justify-end mb-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={fetchBookings}
+                                disabled={isLoading}
+                                className="text-muted-foreground hover:text-primary"
+                            >
+                                <RefreshCw className={`mr-2 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                                {t('dashboard.refresh_feed', 'Refresh Feed')}
+                            </Button>
+                        </div>
                         {isLoading ? (
                             <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
                         ) : myBookings.length === 0 ? (
@@ -474,6 +570,18 @@ export default function Dashboard() {
                     </TabsContent>
 
                     <TabsContent value="recurring" className="space-y-4 min-h-[300px]">
+                        <div className="flex justify-end mb-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={fetchBookings}
+                                disabled={isLoading}
+                                className="text-muted-foreground hover:text-primary"
+                            >
+                                <RefreshCw className={`mr-2 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                                {t('dashboard.refresh_feed', 'Refresh Feed')}
+                            </Button>
+                        </div>
                         {isLoading ? (
                             <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
                         ) : recurringBookings.length === 0 ? (

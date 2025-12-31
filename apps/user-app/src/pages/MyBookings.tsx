@@ -1,8 +1,8 @@
-import { supabase } from "@vision-gate/supabase/client";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, useToast, Tabs, TabsContent, TabsList, TabsTrigger } from "@vision-gate/ui";
 import RecurringBookingsList from "@/components/RecurringBookingsList";
+import { supabase } from "@vision-gate/supabase/client";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { format } from "date-fns";
-import { ArrowLeft, Clock, MapPin, Star, User } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, RefreshCw, Star, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -222,6 +222,16 @@ const MyBookings = () => {
               <h1 className="text-3xl font-bold">{t('bookings.my_bookings')}</h1>
               <p className="text-muted-foreground">{t('bookings.subtitle')}</p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchBookings}
+              disabled={loading}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {t('dashboard.refresh_feed', 'Refresh Feed')}
+            </Button>
           </div>
         </div>
 

@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
 import { supabase } from "@vision-gate/supabase/client";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast, Dialog, DialogContent } from "@vision-gate/ui";
-import { format } from "date-fns";
-import { Calendar, RefreshCw, Pause, Play, XCircle } from "lucide-react";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast } from "@vision-gate/ui";
+import { Pause, Play, RefreshCw, XCircle } from "lucide-react";
+import { useEffect, useState } from 'react';
 import { RRule } from 'rrule';
 
 interface RecurringBooking {
@@ -109,16 +108,16 @@ const RecurringBookingsList = () => {
                         <div className="flex justify-end gap-2 pt-2">
                             {booking.status === 'active' && (
                                 <Button size="sm" variant="outline" onClick={() => handleAction(booking.id, 'pause')}>
-                                    <Pause className="h-4 w-4 mr-1" /> Pause
+                                    <Pause className="h-4 w-4 mr-1" /> PAUSE
                                 </Button>
                             )}
                             {booking.status === 'paused' && (
                                 <Button size="sm" variant="outline" onClick={() => handleAction(booking.id, 'resume')}>
-                                    <Play className="h-4 w-4 mr-1" /> Resume
+                                    <Play className="h-4 w-4 mr-1" /> RESUME
                                 </Button>
                             )}
                             <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleAction(booking.id, 'cancel')}>
-                                <XCircle className="h-4 w-4 mr-1" /> Cancel Series
+                                <XCircle className="h-4 w-4 mr-1" /> REMOVE
                             </Button>
                         </div>
                     </CardContent>

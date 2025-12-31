@@ -1,4 +1,3 @@
-import RecurringBookingDialog from "@/components/RecurringBookingDialog";
 import logo from "@/assets/helperhub-logo.png";
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -60,6 +59,8 @@ const Dashboard = () => {
   const [prebookType, setPrebookType] = useState<"single" | "multiple">("single");
   const [selectedWeekDays, setSelectedWeekDays] = useState<string[]>([]);
   const [prebookEndDate, setPrebookEndDate] = useState<Date | undefined>(undefined);
+  const [isIndefinite, setIsIndefinite] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
   // Address Selection State
   const [showAddressSelection, setShowAddressSelection] = useState(false);
@@ -1244,7 +1245,7 @@ const Dashboard = () => {
           <Tabs defaultValue="single" value={prebookType} onValueChange={(v) => setPrebookType(v as any)} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="single">Single Service</TabsTrigger>
-              <TabsTrigger value="multiple">Recurring / Multiple</TabsTrigger>
+              <TabsTrigger value="multiple">Subscription</TabsTrigger>
             </TabsList>
 
             <TabsContent value="single" className="space-y-4 py-4">
@@ -1318,11 +1319,6 @@ const Dashboard = () => {
                   // Navigate to logic similar to immediate booking but with Scheduled flag
                   setShowPrebookDialog(false);
 
-                  // For demo, we might want to go to expert selection or payment. 
-                  // If "Pre-book" means select expert first, we go to experts.
-                  // But usually scheduling implies confirming schedule. 
-                  // Let's assume we go to Payment/Summary with scheduled details.
-
                   // Calculate dummy price
                   const basePrice = service ? service.base_price : 200;
                   const totalPrice = Math.round(basePrice * prebookDuration);
@@ -1348,37 +1344,56 @@ const Dashboard = () => {
 
             <TabsContent value="multiple" className="space-y-4 py-4">
               <div className="bg-card/50 p-4 rounded-lg border">
-                <h4 className="font-medium mb-4 text-foreground">Select Recurring Days</h4>
+                <h4 className="font-medium mb-4 text-foreground">Subscription Type</h4>
                 <div className="flex flex-wrap gap-2 mb-6">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
+                  {["Daily", "Alternate Days"].map(type => (
                     <div
-                      key={day}
-                      className={`h-10 w-10 rounded-full flex items-center justify-center cursor-pointer border transition-all ${selectedWeekDays.includes(day)
+                      key={type}
+                      className={`px-4 py-2 rounded-full flex items-center justify-center cursor-pointer border transition-all text-sm font-medium ${selectedWeekDays.includes(type)
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background hover:border-primary/50'
                         }`}
                       onClick={() => {
-                        if (selectedWeekDays.includes(day)) {
-                          setSelectedWeekDays(selectedWeekDays.filter(d => d !== day));
-                        } else {
-                          setSelectedWeekDays([...selectedWeekDays, day]);
-                        }
+                        // Exclusive selection for subscription types
+                        setSelectedWeekDays([type]);
                       }}
                     >
-                      {day}
+                      {type}
                     </div>
                   ))}
                 </div>
 
-                {/* Date Range */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">Start Date</label>
                     <Input type="date" className="bg-background text-foreground" value={prebookDate ? format(prebookDate, 'yyyy-MM-dd') : ''} onChange={e => setPrebookDate(e.target.value ? new Date(e.target.value) : undefined)} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">End Date</label>
-                    <Input type="date" className="bg-background text-foreground" value={prebookEndDate ? format(prebookEndDate, 'yyyy-MM-dd') : ''} onChange={e => setPrebookEndDate(e.target.value ? new Date(e.target.value) : undefined)} />
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium text-foreground">End Date</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="indefinite"
+                          checked={isIndefinite}
+                          onChange={(e) => {
+                            setIsIndefinite(e.target.checked);
+                            if (e.target.checked) setPrebookEndDate(undefined);
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <label htmlFor="indefinite" className="text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
+                          As long as I wish
+                        </label>
+                      </div>
+                    </div>
+                    <Input
+                      type="date"
+                      className={`bg-background text-foreground ${isIndefinite ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      value={prebookEndDate ? format(prebookEndDate, 'yyyy-MM-dd') : ''}
+                      onChange={e => setPrebookEndDate(e.target.value ? new Date(e.target.value) : undefined)}
+                      disabled={isIndefinite}
+                    />
                   </div>
                 </div>
 
@@ -1410,10 +1425,10 @@ const Dashboard = () => {
                       <Calendar className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Selected Schedule</p>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Selected Subscription</p>
                       <p className="font-bold text-foreground">
-                        {selectedWeekDays.length > 0 ? selectedWeekDays.join(', ') : 'Select days'}
-                        {prebookDate ? ` from ${format(prebookDate, 'EEE, dd MMM')}` : ''} to {prebookEndDate ? ` ${format(prebookEndDate, 'EEE, dd MMM')}` : ''} at {prebookTime || 'Select time'}
+                        {selectedWeekDays.length > 0 ? selectedWeekDays[0] : 'Select Type'}
+                        {prebookDate ? ` from ${format(prebookDate, 'dd MMM yyyy')}` : ''} {isIndefinite ? ' (Until Cancelled)' : prebookEndDate ? ` to ${format(prebookEndDate, 'dd MMM yyyy')}` : ''} at {prebookTime || 'Select time'}
                       </p>
                     </div>
                   </div>
@@ -1427,11 +1442,21 @@ const Dashboard = () => {
                   className="w-full bg-primary hover:bg-primary/90"
                   disabled={selectedWeekDays.length === 0}
                   onClick={() => {
-                    // Placeholder for recurring booking handling
-                    toast({ title: "Feature Pending", description: "Recurring booking backend is under construction." });
+                    const draft = {
+                      service: activeGuidelineService,
+                      date: prebookDate,
+                      endDate: prebookEndDate,
+                      time: prebookTime,
+                      duration: prebookDuration,
+                      isRecurring: true,
+                      subType: selectedWeekDays[0],
+                      isIndefinite: isIndefinite
+                    };
+                    setBookingDraft(draft);
+                    setShowAddressSelection(true);
                   }}
                 >
-                  Configure Recurring Plan
+                  Configure Subscription
                 </Button>
               </div>
             </TabsContent>
@@ -1444,14 +1469,73 @@ const Dashboard = () => {
         open={showAddressSelection}
         onOpenChange={setShowAddressSelection}
         currentLocation={userLocation}
-        onSelect={(address) => {
+        onSelect={async (address) => {
+          setSelectedAddress(address);
           setShowAddressSelection(false);
-          navigate('/payment', {
-            state: {
-              ...bookingDraft,
-              address: address
+
+          if (bookingDraft?.isRecurring) {
+            // Subscription Logic
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session) {
+                navigate("/login");
+                return;
+              }
+
+              const service = services.find(s => s.name === bookingDraft.service);
+              if (!service) throw new Error("Service not found");
+
+              const subType = bookingDraft.subType;
+              let rrule = "";
+              if (subType === "Daily") {
+                rrule = "FREQ=DAILY;INTERVAL=1";
+              } else if (subType === "Alternate Days") {
+                rrule = "FREQ=DAILY;INTERVAL=2";
+              }
+
+              const { data: newSubId, error: subError } = await supabase.rpc('create_recurring_booking', {
+                p_user_id: session.user.id,
+                p_service_ids: [service.id],
+                p_address_id: address.id,
+                p_preferred_worker_id: null,
+                p_rrule: rrule,
+                p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                p_start_date: format(bookingDraft.date, 'yyyy-MM-dd'),
+                p_end_date: bookingDraft.endDate ? format(bookingDraft.endDate, 'yyyy-MM-dd') : null,
+                p_max_occurrences: null,
+                p_preferred_time_start: bookingDraft.time,
+                p_preferred_time_end: format(new Date(new Date(`2000-01-01T${bookingDraft.time}`).getTime() + bookingDraft.duration * 60 * 60 * 1000), 'HH:mm'),
+                p_duration_minutes: bookingDraft.duration * 60,
+                p_notes: `Location: ${bookingLocation}`
+              } as any);
+
+              if (subError) throw subError;
+
+              toast({
+                title: "Subscription Created",
+                description: "Your subscription request has been sent to workers.",
+              });
+
+              setShowRecurringDialog(false);
+              setShowPrebookDialog(false);
+              setBookingDraft(null);
+            } catch (error: any) {
+              console.error("Error creating subscription:", error);
+              toast({
+                title: "Subscription Failed",
+                description: error.message || "Failed to create subscription",
+                variant: "destructive",
+              });
             }
-          });
+          } else {
+            // Single booking logic - go to payment
+            navigate('/payment', {
+              state: {
+                ...bookingDraft,
+                address: address
+              }
+            });
+          }
         }}
       />
 
