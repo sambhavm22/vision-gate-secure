@@ -63,7 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .from("workers_public")
                 // @ts-ignore
                 .select("*")
-                .eq("id", userId)
+                .or(`id.eq.${userId},user_id.eq.${userId}`)
+                .limit(1)
                 .single();
 
             if (error && error.code !== 'PGRST116') { // PGRST116 is code for no rows found

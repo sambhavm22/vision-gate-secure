@@ -137,7 +137,7 @@ export default function Dashboard() {
                 {
                     p_worker_id: workerProfile.id,
                     p_limit: 50,
-                    p_radius_km: 100
+                    p_radius_km: filterDistance
                 }
             );
             if (marketError) throw marketError;
@@ -210,7 +210,7 @@ export default function Dashboard() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [workerProfile]);
+    }, [workerProfile, filterDistance]);
 
     const handleAccept = async (bookingId: string) => {
         if (!workerProfile) return;

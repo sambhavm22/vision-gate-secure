@@ -318,12 +318,18 @@ const MyBookings = () => {
                             </p>
                           </div>
                         </div>
-                        {(booking.notes || t('bookings.location_not_specified')) && (
+                        {(booking.address || booking.notes || t('bookings.location_not_specified')) && (
                           <div className="flex items-start gap-2 md:col-span-2">
                             <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                             <div>
                               <p className="text-sm text-muted-foreground">{t('bookings.details_location')}</p>
-                              <p className="font-medium">{booking.notes}</p>
+                              <p className="font-medium">
+                                {booking.address ? (
+                                  `${booking.address.address_line1}${booking.address.city ? `, ${booking.address.city}` : ''}`
+                                ) : (
+                                  booking.notes?.replace(/^Location:\s*/i, '') || t('bookings.location_not_specified')
+                                )}
+                              </p>
                             </div>
                           </div>
                         )}
@@ -417,7 +423,9 @@ const MyBookings = () => {
                         </p>
                       </>
                     ) : (
-                      <p className="font-medium italic text-muted-foreground">{t('bookings.location_not_specified')}</p>
+                      <p className="font-medium italic text-muted-foreground">
+                        {selectedBooking.notes?.replace(/^Location:\s*/i, '') || t('bookings.location_not_specified')}
+                      </p>
                     )}
                   </div>
                 </div>

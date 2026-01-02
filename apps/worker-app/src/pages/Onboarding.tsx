@@ -1,8 +1,8 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, Input, Textarea, useToast } from "@vision-gate/ui";
 import { useAuth } from "@/context/AuthContext";
 import { useServices } from "@/hooks/useServices";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@vision-gate/supabase/client";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, Input, Textarea, useToast } from "@vision-gate/ui";
 import { Loader2, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -115,6 +115,7 @@ export default function Onboarding() {
             // @ts-ignore
             const { error } = await supabase.from("workers_public").insert({
                 id: user.id,
+                user_id: user.id,
                 full_name: values.full_name,
                 bio: values.bio,
                 hourly_rate: Number(values.hourly_rate),
