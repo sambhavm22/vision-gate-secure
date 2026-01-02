@@ -4,7 +4,7 @@ import { RecurringJobCard } from "@/components/RecurringJobCard";
 import { useAuth } from "@/context/AuthContext";
 import type { RecurringBooking } from "@/types";
 import { supabase } from "@vision-gate/supabase/client";
-import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useNotifications, useToast } from "@vision-gate/ui";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,9 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { t } = useTranslation();
+
+    // Real-time Notifications
+    useNotifications(workerProfile?.user_id);
     const [marketBookings, setMarketBookings] = useState<any[]>([]);
     const [myBookings, setMyBookings] = useState<any[]>([]);
     const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
@@ -129,13 +132,13 @@ export default function Dashboard() {
         try {
             // 1. Fetch Market Bookings (RPC)
             // Using v2 to avoid ambiguity
-            const { data: marketData, error: marketError } = await supabase.rpc(
+            const { data: marketData, error: marketError } = await (supabase.rpc as any)(
                 "get_market_bookings_v2",
                 {
                     p_worker_id: workerProfile.id,
                     p_limit: 50,
                     p_radius_km: 100
-                } as any
+                }
             );
             if (marketError) throw marketError;
             setMarketBookings(marketData || []);
@@ -170,12 +173,12 @@ export default function Dashboard() {
             setRecurringBookings(recurringData as any || []);
 
             // 4. Fetch Market Subscriptions
-            const { data: subData, error: subError } = await supabase.rpc(
+            const { data: subData, error: subError } = await (supabase.rpc as any)(
                 "get_market_subscriptions",
                 {
                     p_worker_id: workerProfile.id,
                     p_radius_km: filterDistance
-                } as any
+                }
             );
             if (subError) throw subError;
             setMarketSubscriptions(subData || []);
@@ -213,10 +216,10 @@ export default function Dashboard() {
         if (!workerProfile) return;
         setProcessingId(bookingId);
         try {
-            const { error } = await supabase.rpc("accept_booking", {
+            const { error } = await (supabase.rpc as any)("accept_booking", {
                 p_booking_id: bookingId,
                 p_worker_id: workerProfile.id
-            } as any);
+            });
 
             if (error) throw error;
 
@@ -238,10 +241,10 @@ export default function Dashboard() {
         if (!workerProfile) return;
         setProcessingId(subscriptionId);
         try {
-            const { error } = await supabase.rpc("manage_recurring_booking", {
+            const { error } = await (supabase.rpc as any)("manage_recurring_booking", {
                 p_recurring_id: subscriptionId,
                 p_action: 'accept'
-            } as any);
+            });
 
             if (error) throw error;
 

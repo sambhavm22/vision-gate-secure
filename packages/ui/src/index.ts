@@ -1,7 +1,6 @@
-export * from "./lib/utils";
 export * from "./components/ui/accordion";
-export * from "./components/ui/alert-dialog";
 export * from "./components/ui/alert";
+export * from "./components/ui/alert-dialog";
 export * from "./components/ui/aspect-ratio";
 export * from "./components/ui/avatar";
 export * from "./components/ui/badge";
@@ -46,5 +45,8 @@ export { Toaster } from "./components/ui/toaster";
 export * from "./components/ui/toggle";
 export * from "./components/ui/toggle-group";
 export * from "./components/ui/tooltip";
-export { useToast, toast } from "./components/ui/use-toast";
+export { toast, useToast } from "./components/ui/use-toast";
 export { useIsMobile } from "./hooks/use-mobile";
+export { useNotifications } from "./hooks/use-notifications";
+export * from "./lib/utils";
+

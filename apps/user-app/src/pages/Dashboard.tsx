@@ -3,7 +3,7 @@ import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { supabase } from "@vision-gate/supabase/client";
 import { Database } from "@vision-gate/supabase/types";
-import { Badge, Button, Calendar as CalendarComponent, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useIsMobile, useToast } from "@vision-gate/ui";
+import { Badge, Button, Calendar as CalendarComponent, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useIsMobile, useNotifications, useToast } from "@vision-gate/ui";
 import { format } from "date-fns";
 import { ArrowLeft, ArrowRight, Calendar, CheckCircle, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -68,6 +68,10 @@ const Dashboard = () => {
 
   const [showReferralDialog, setShowReferralDialog] = useState(false);
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+
+  // Real-time Notifications
+  useNotifications(userId);
 
 
 
@@ -167,7 +171,9 @@ const Dashboard = () => {
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    if (session) {
+      setUserId(session.user.id);
+    } else {
       // Optional: Redirect to login or just show public data
       // navigate("/login");
     }
@@ -1331,8 +1337,8 @@ const Dashboard = () => {
                       label: `${prebookDuration} Hrs (Scheduled)`,
                       price: totalPrice,
                       rate: basePrice,
-                      scheduledDate: dateStr,
-                      scheduledTime: prebookTime,
+                      date: dateStr,
+                      time: prebookTime,
                       isPrebook: true
                     }
                   });
@@ -1493,7 +1499,7 @@ const Dashboard = () => {
                 rrule = "FREQ=DAILY;INTERVAL=2";
               }
 
-              const { data: newSubId, error: subError } = await supabase.rpc('create_recurring_booking', {
+              const { data: newSubId, error: subError } = await (supabase.rpc as any)('create_recurring_booking', {
                 p_user_id: session.user.id,
                 p_service_ids: [service.id],
                 p_address_id: address.id,
@@ -1507,7 +1513,7 @@ const Dashboard = () => {
                 p_preferred_time_end: format(new Date(new Date(`2000-01-01T${bookingDraft.time}`).getTime() + bookingDraft.duration * 60 * 60 * 1000), 'HH:mm'),
                 p_duration_minutes: bookingDraft.duration * 60,
                 p_notes: `Location: ${bookingLocation}`
-              } as any);
+              });
 
               if (subError) throw subError;
 

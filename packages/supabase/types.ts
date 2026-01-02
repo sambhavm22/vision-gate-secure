@@ -79,6 +79,7 @@ export type Database = {
                     location: any | null // Geography point
                     is_verified: boolean
                     bio: string | null
+                    is_online: boolean
                     created_at: string
                 }
                 Insert: {
@@ -92,6 +93,7 @@ export type Database = {
                     location?: any | null
                     is_verified?: boolean
                     bio?: string | null
+                    is_online?: boolean
                     created_at?: string
                 }
                 Update: {
@@ -105,6 +107,7 @@ export type Database = {
                     location?: any | null
                     is_verified?: boolean
                     bio?: string | null
+                    is_online?: boolean
                     created_at?: string
                 }
             }
@@ -299,6 +302,64 @@ export type Database = {
                     updated_at?: string
                 }
             }
+            fcm_tokens: {
+                Row: {
+                    id: string
+                    user_id: string
+                    token: string
+                    device_type: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    token: string
+                    device_type?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    token?: string
+                    device_type?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            notifications: {
+                Row: {
+                    id: string
+                    user_id: string
+                    title: string | null
+                    message: string | null
+                    type: string | null
+                    metadata: Json | null
+                    is_read: boolean
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    title?: string | null
+                    message?: string | null
+                    type?: string | null
+                    metadata?: Json | null
+                    is_read?: boolean
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    title?: string | null
+                    message?: string | null
+                    type?: string | null
+                    metadata?: Json | null
+                    is_read?: boolean
+                    created_at?: string
+                }
+            }
             recurring_booking_audit_log: {
                 Row: {
                     id: string
@@ -394,6 +455,80 @@ export type Database = {
                     p_worker_id: string
                 }
                 Returns: void
+            }
+            create_recurring_booking: {
+                Args: {
+                    p_user_id: string
+                    p_service_ids: number[]
+                    p_address_id: string
+                    p_preferred_worker_id: string | null
+                    p_rrule: string
+                    p_timezone: string
+                    p_start_date: string
+                    p_end_date: string | null
+                    p_max_occurrences: number | null
+                    p_preferred_time_start: string
+                    p_preferred_time_end: string
+                    p_duration_minutes: number
+                    p_notes?: string | null
+                    p_stripe_customer_id?: string | null
+                    p_stripe_payment_method_id?: string | null
+                }
+                Returns: string
+            }
+            manage_recurring_booking: {
+                Args: {
+                    p_recurring_id: string
+                    p_action: string
+                }
+                Returns: boolean
+            }
+            skip_occurrence: {
+                Args: {
+                    p_occurrence_id: string
+                    p_reason?: string | null
+                }
+                Returns: boolean
+            }
+            get_market_bookings_v2: {
+                Args: {
+                    p_worker_id?: string | null
+                    p_limit?: number
+                    p_radius_km?: number
+                }
+                Returns: {
+                    id: string
+                    booking_id: string
+                    service_name: string
+                    status: string
+                    total_amount: number
+                    scheduled_at: string
+                    duration_minutes: number
+                    address_line1: string
+                    city: string
+                    dist_meters: number
+                    notes: string
+                    is_location_estimated: boolean
+                }[]
+            }
+            get_market_subscriptions: {
+                Args: {
+                    p_worker_id?: string | null
+                    p_radius_km?: number
+                }
+                Returns: {
+                    id: string
+                    user_id: string
+                    service_names: string[]
+                    rrule: string
+                    start_date: string
+                    end_date: string | null
+                    preferred_time_start: string
+                    total_per_occurrence: number
+                    address_line1: string
+                    city: string
+                    dist_meters: number
+                }[]
             }
         }
         Enums: {

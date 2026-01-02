@@ -1,7 +1,7 @@
 
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
-import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, RadioGroup, RadioGroupItem, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
+import { Button, Card, CardContent, CardHeader, CardTitle, useToast } from "@vision-gate/ui";
 import { ArrowLeft, Banknote, CheckCircle2, Circle, CreditCard, Landmark, Pencil, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -76,13 +76,26 @@ const Payment = () => {
             });
 
             // Use the create_booking RPC for transaction-safe booking
+            // Standardize inputs (handle both 'date' and 'scheduledDate' conventions)
+            const rawDate = state.date || state.scheduledDate;
+            const rawTime = state.time || state.scheduledTime;
+
+            let scheduledAt: string;
+
+            if (rawDate && rawTime) {
+                // Handle both Date objects and strings
+                const dateStr = typeof rawDate !== 'string' ? format(new Date(rawDate), 'yyyy-MM-dd') : rawDate;
+                scheduledAt = new Date(`${dateStr}T${rawTime}`).toISOString();
+            } else {
+                scheduledAt = new Date(Date.now() + 15 * 60000).toISOString();
+            }
+
             const { data: bookingId, error } = await (supabase.rpc as any)('create_booking', {
-                customer_uuid: session.user.id,
-                service_id_input: state.service_id || 1, // Fallback to 1 if not passed
+                service_id_input: state.service_id || 1,
                 address_id_input: currentAddress?.id || null,
-                scheduled_at_input: new Date(Date.now() + 15 * 60000).toISOString(), // "Arriving in 15 Min"
+                scheduled_at_input: scheduledAt,
                 duration_minutes_input: (state.duration || 1) * 60,
-                preferred_worker_id_input: null
+                notes_input: state.notes || `Location: ${state.service || 'Service'}`
             });
 
             if (error) throw error;
