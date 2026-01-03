@@ -5,8 +5,8 @@ export async function registerFcmToken(userId: string, token: string, deviceType
 
     console.log(`Registering FCM token for user ${userId}`);
 
-    const { error } = await supabase
-        .from('fcm_tokens')
+    const { error } = await (supabase
+        .from('fcm_tokens') as any)
         .upsert({
             user_id: userId,
             token: token,
