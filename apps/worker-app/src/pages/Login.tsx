@@ -1,6 +1,6 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, Input, useToast } from "@vision-gate/ui";
-import { supabase } from "@vision-gate/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { supabase } from "@vision-gate/supabase/client";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, Input, useToast } from "@vision-gate/ui";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
