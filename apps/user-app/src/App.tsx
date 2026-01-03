@@ -1,5 +1,5 @@
-import { Sonner, Toaster, TooltipProvider } from "@vision-gate/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Sonner, Toaster, TooltipProvider } from "@vision-gate/ui";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Payment from "./pages/Payment";
 import Profile from "./pages/Profile";
 import Signup from "./pages/Signup";
+import Support from "./pages/Support";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/my-bookings" element={<MyBookings />} />
             <Route path="/payment" element={<Payment />} />
+            <Route path="/support" element={<Support />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

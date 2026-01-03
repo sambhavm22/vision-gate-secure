@@ -1,7 +1,7 @@
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog"; // Reuse the dialog
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast } from "@vision-gate/ui";
 import { supabase } from "@vision-gate/supabase/client";
-import { ArrowLeft, Briefcase, Home, LogOut, Mail, MapPin, Pencil, Phone, Plus, Trash2, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast } from "@vision-gate/ui";
+import { ArrowLeft, Briefcase, HelpCircle, Home, LogOut, Mail, MapPin, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -214,6 +214,28 @@ const Profile = () => {
           )}
         </div>
 
+        {/* Support Section */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Support</h2>
+          <Card
+            className="hover:border-primary/50 transition-colors cursor-pointer"
+            onClick={() => navigate("/support")}
+          >
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                  <HelpCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold">Help & Support</p>
+                  <p className="text-sm text-muted-foreground">Report an issue or ask for help</p>
+                </div>
+              </div>
+              <ArrowLeft className="h-5 w-5 text-muted-foreground rotate-180" />
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="flex justify-center pt-8">
           <Button variant="outline" className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
@@ -241,3 +263,4 @@ const Profile = () => {
 };
 
 export default Profile;
+

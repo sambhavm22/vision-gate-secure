@@ -395,6 +395,44 @@ export type Database = {
                     created_at?: string
                 }
             }
+            support_tickets: {
+                Row: {
+                    id: string
+                    user_id: string | null
+                    name: string
+                    mobile: string
+                    email: string
+                    category: string
+                    description: string
+                    attachment_url: string | null
+                    status: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id?: string | null
+                    name: string
+                    mobile: string
+                    email: string
+                    category: string
+                    description: string
+                    attachment_url?: string | null
+                    status?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string | null
+                    name?: string
+                    mobile?: string
+                    email?: string
+                    category?: string
+                    description?: string
+                    attachment_url?: string | null
+                    status?: string | null
+                    created_at?: string
+                }
+            }
         }
         Views: {
             [_ in never]: never
