@@ -1,11 +1,12 @@
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { Toaster } from "@vision-gate/ui";
 import { AuthProvider } from "@/context/AuthContext";
+import CalendarPage from "@/pages/Calendar";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
 import Onboarding from "@/pages/Onboarding";
 import Profile from "@/pages/Profile";
 import VerificationCallback from "@/pages/VerificationCallback";
+import { Toaster } from "@vision-gate/ui";
 import { useEffect } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 
@@ -39,6 +40,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/calendar"
+            element={
+              <ProtectedRoute>
+                <CalendarPage />
               </ProtectedRoute>
             }
           />

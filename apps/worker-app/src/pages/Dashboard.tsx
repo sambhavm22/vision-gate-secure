@@ -316,6 +316,15 @@ export default function Dashboard() {
                     >
                         {darkMode ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-slate-700" />}
                     </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate("/calendar")}
+                        className="rounded-full h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                        title="My Schedule"
+                    >
+                        <CalendarClock className="h-4 w-4" />
+                    </Button>
                     <div
                         className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold cursor-pointer hover:bg-primary/20 transition-colors"
                         onClick={() => navigate("/profile")}
