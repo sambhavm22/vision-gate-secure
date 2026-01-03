@@ -1,49 +1,40 @@
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
-import { 
-    Button, 
-    Card, 
-    CardContent, 
-    CardHeader, 
-    CardTitle, 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
+import {
+    Button,
+    Dialog,
+    DialogContent,
     DialogTitle,
-    Tabs,
-    TabsList,
-    TabsTrigger,
-    useToast 
+    useToast
 } from "@vision-gate/ui";
-import { 
-    addDays, 
-    addMonths, 
-    addWeeks, 
-    endOfMonth, 
-    endOfWeek, 
-    format, 
-    isSameDay, 
-    isSameMonth, 
+import { cn } from "@vision-gate/ui/utils";
+import {
+    addDays,
+    addMonths,
+    addWeeks,
+    endOfMonth,
+    endOfWeek,
+    format,
+    isSameDay,
+    isSameMonth,
     isToday as isTodayDate,
-    startOfMonth, 
-    startOfWeek, 
-    subDays, 
-    subMonths, 
+    startOfMonth,
+    startOfWeek,
+    subDays,
+    subMonths,
     subWeeks
 } from "date-fns";
-import { 
-    Calendar as CalendarIcon, 
-    ChevronLeft, 
-    ChevronRight, 
-    Clock, 
-    MapPin, 
-    Search,
+import {
+    Calendar as CalendarIcon,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    MapPin,
     MoreHorizontal
 } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@vision-gate/ui/utils";
 
 type ViewType = 'day' | 'week' | 'month';
 
@@ -72,6 +63,7 @@ export default function CalendarPage() {
                 `)
                 .eq("worker_id", workerProfile.id)
                 .neq("status", "requested")
+                .gte("scheduled_at", new Date().toISOString())
                 .order("scheduled_at", { ascending: true });
 
             if (error) throw error;
@@ -89,9 +81,9 @@ export default function CalendarPage() {
 
         const channel = supabase
             .channel('calendar-sync')
-            .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
                 table: 'bookings',
                 filter: `worker_id=eq.${workerProfile.id}`
             }, () => {
@@ -152,27 +144,27 @@ export default function CalendarPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Button 
-                        variant="secondary" 
-                        size="sm" 
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setCurrentDate(new Date())}
                         className="bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 h-9 px-4"
                     >
                         Today
                     </Button>
                     <div className="flex items-center gap-1">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg" 
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
                             onClick={() => navigateDate('prev')}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg" 
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
                             onClick={() => navigateDate('next')}
                         >
                             <ChevronRight className="h-4 w-4" />
@@ -190,8 +182,8 @@ export default function CalendarPage() {
                             onClick={() => setView(v)}
                             className={cn(
                                 "px-8 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 capitalize",
-                                view === v 
-                                    ? "bg-[#1e293b] text-white shadow-lg" 
+                                view === v
+                                    ? "bg-[#1e293b] text-white shadow-lg"
                                     : "text-slate-500 hover:text-slate-300"
                             )}
                         >
@@ -221,8 +213,8 @@ export default function CalendarPage() {
                                 const isToday = isTodayDate(date);
 
                                 return (
-                                    <div 
-                                        key={idx} 
+                                    <div
+                                        key={idx}
                                         className={cn(
                                             "min-h-[120px] bg-[#020617] p-3 transition-colors hover:bg-slate-900/50 relative group",
                                             !isCurrentMonth && "opacity-40"
@@ -239,7 +231,7 @@ export default function CalendarPage() {
                                         </div>
                                         <div className="space-y-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-1">
                                             {dateBookings.map(b => (
-                                                <div 
+                                                <div
                                                     key={b.id}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -267,14 +259,14 @@ export default function CalendarPage() {
                     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
                         {days.map((day, idx) => {
                             const dateBookings = bookings.filter(b => isSameDay(new Date(b.scheduled_at), day));
-                            
+
                             return (
                                 <section key={idx} className="relative">
                                     <div className="flex items-center gap-4 mb-6">
                                         <div className={cn(
                                             "flex flex-col items-center justify-center min-w-[60px] h-[60px] rounded-xl border transition-all duration-300",
-                                            isTodayDate(day) 
-                                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500" 
+                                            isTodayDate(day)
+                                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
                                                 : "bg-slate-800/30 border-slate-800 text-slate-400"
                                         )}>
                                             <span className="text-[10px] font-bold uppercase tracking-widest">{format(day, 'EEE')}</span>
@@ -282,7 +274,7 @@ export default function CalendarPage() {
                                         </div>
                                         <div className="h-px flex-1 bg-gradient-to-r from-slate-800 to-transparent" />
                                     </div>
-                                    
+
                                     {dateBookings.length === 0 ? (
                                         <div className="ml-20 py-8 text-slate-600 italic text-sm border-l-2 border-dashed border-slate-800 pl-8">
                                             No jobs scheduled for this day
@@ -290,13 +282,13 @@ export default function CalendarPage() {
                                     ) : (
                                         <div className="ml-20 space-y-4 relative border-l-2 border-slate-800 pl-8 pb-4">
                                             {dateBookings.map(b => (
-                                                <div 
-                                                    key={b.id} 
+                                                <div
+                                                    key={b.id}
                                                     onClick={() => setSelectedBooking(b)}
                                                     className="group relative bg-[#0f172a] border border-slate-800 p-5 rounded-2xl hover:border-primary/50 transition-all duration-300 cursor-pointer hover:shadow-2xl hover:shadow-primary/5 active:scale-[0.99]"
                                                 >
                                                     <div className="absolute left-[-41px] top-6 w-5 h-5 rounded-full border-4 border-[#020617] bg-primary z-10 scale-0 group-hover:scale-100 transition-transform duration-300" />
-                                                    
+
                                                     <div className="flex justify-between items-start">
                                                         <div className="space-y-3">
                                                             <div className="flex items-center gap-3">
@@ -341,19 +333,19 @@ export default function CalendarPage() {
             <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
                 <DialogContent className="sm:max-w-md bg-[#0f172a] border-slate-800 text-slate-100 p-0 overflow-hidden rounded-3xl">
                     <div className="bg-primary/10 p-6 pb-20 relative">
-                         <div 
+                        <div
                             className="inline-flex items-center justify-center font-bold px-3 py-0.5 rounded-full text-[10px] bg-primary/20 border-primary/30 text-primary uppercase tracking-widest mb-3"
-                         >
+                        >
                             Booking Details
-                         </div>
-                         <DialogTitle className="text-3xl font-black tracking-tight text-white leading-tight">
+                        </div>
+                        <DialogTitle className="text-3xl font-black tracking-tight text-white leading-tight">
                             {selectedBooking?.service?.name}
-                         </DialogTitle>
-                         <div className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/5 flex items-center justify-center text-white">
+                        </DialogTitle>
+                        <div className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/5 flex items-center justify-center text-white">
                             <Clock className="h-6 w-6 opacity-50" />
-                         </div>
+                        </div>
                     </div>
-                    
+
                     <div className="bg-[#0f172a] p-8 -mt-10 rounded-t-[40px] relative z-10">
                         {selectedBooking && (
                             <div className="space-y-8">
@@ -363,7 +355,7 @@ export default function CalendarPage() {
                                     <DetailItem label="Total Duration" value={`${selectedBooking.duration_minutes} minutes`} />
                                     <DetailItem label="Estimated Payout" value={`₹${selectedBooking.total_amount}`} className="text-emerald-400 font-black" />
                                 </div>
-                                
+
                                 <div className="pt-6 border-t border-slate-800">
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Service Location</p>
                                     <div className="flex gap-4">

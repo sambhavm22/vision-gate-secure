@@ -153,6 +153,7 @@ export default function Dashboard() {
         `)
                 .eq("worker_id", workerProfile.id)
                 .neq("status", "requested") // Should be matched/accepted/etc
+                .gte("scheduled_at", new Date().toISOString())
                 .order("scheduled_at", { ascending: true });
 
             if (myError) throw myError;
