@@ -48,6 +48,32 @@ const MyBookings = () => {
   const [ratingVal, setRatingVal] = useState(5);
   const [reviewVal, setReviewVal] = useState("");
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [paymentBooking, setPaymentBooking] = useState<Booking | null>(null);
+
+  const handlePaymentConfirm = async (method: string) => {
+    if (!paymentBooking) return;
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'paid' } as any)
+        .eq('id', paymentBooking.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Payment Successful",
+        description: `Payment of ₹${paymentBooking.total_amount} recorded via ${method.toUpperCase()}.`
+      });
+
+      setBookings(prev => prev.map(b => b.id === paymentBooking.id ? { ...b, status: 'paid' } : b));
+      if (selectedBooking?.id === paymentBooking.id) {
+        setSelectedBooking(prev => prev ? { ...prev, status: 'paid' } : null);
+      }
+      setPaymentBooking(null);
+    } catch (err: any) {
+      toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+    }
+  };
 
   useEffect(() => {
     let channel: any;
@@ -196,6 +222,131 @@ const MyBookings = () => {
     }
   };
 
+  const upcomingBookings = bookings.filter(b => new Date(b.scheduled_at) >= new Date());
+  const pastBookings = bookings.filter(b => new Date(b.scheduled_at) < new Date());
+
+  const renderBookingList = (list: Booking[], emptyMessage: string) => {
+    if (list.length === 0) {
+      return (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-4">{emptyMessage}</p>
+            <Button onClick={() => navigate("/dashboard")}>
+              {t('bookings.book_first')}
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {list.map((booking) => (
+          <Card
+            key={booking.id}
+            className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-primary group"
+            onClick={() => setSelectedBooking(booking)}
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">{booking.service?.name ? t(`services.${booking.service.name}`, booking.service.name) : t('bookings.service_request')}</CardTitle>
+                <div className="flex items-center gap-2">
+                  {booking.status === "completed" && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPaymentBooking(booking);
+                        }}
+                        className="bg-green-600 hover:bg-green-700 h-8"
+                      >
+                        Pay ₹{booking.total_amount}
+                      </Button>
+                      {!booking.rating && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => openRatingDialog(booking.id, e)}
+                          className="mr-2 text-yellow-600 border-yellow-200 hover:bg-yellow-50 h-8"
+                        >
+                          <Star className="h-4 w-4 mr-1" /> {t('bookings.rate_worker')}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {booking.rating && (
+                    <div className="flex items-center text-yellow-500 mr-2 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100 text-sm font-bold">
+                      {booking.rating} ★
+                    </div>
+                  )}
+                  <Badge variant={getStatusVariant(booking.status) as any}>
+                    {t(`status.${booking.status}`, booking.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()))}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-2">
+                  {booking.worker ? (
+                    <>
+                      <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">{t('bookings.helper')}</p>
+                        <p className="font-medium">{booking.worker.full_name}</p>
+                        <div className="flex items-center text-xs text-yellow-600">
+                          <span className="font-bold mr-1">{booking.worker.rating}</span> ★
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">{t('bookings.helper')}</p>
+                        <p className="italic text-gray-500">{t('bookings.searching')}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-start gap-2">
+                  <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t('bookings.scheduled_for')}</p>
+                    <p className="font-medium">
+                      {new Date(booking.scheduled_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                {(booking.address || booking.notes || t('bookings.location_not_specified')) && (
+                  <div className="flex items-start gap-2 md:col-span-2">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">{t('bookings.details_location')}</p>
+                      <p className="font-medium">
+                        {booking.address ? (
+                          `${booking.address.address_line1}${booking.address.city ? `, ${booking.address.city}` : ''}`
+                        ) : (
+                          booking.notes?.replace(/^Location:\s*/i, '') || t('bookings.location_not_specified')
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="md:col-span-2 pt-2 border-t flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{t('bookings.total_amount')}</span>
+                  <span className="text-lg font-bold text-primary">₹{booking.total_amount}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -237,113 +388,23 @@ const MyBookings = () => {
 
         <Tabs defaultValue="bookings" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="bookings">Past & Upcoming</TabsTrigger>
+            <TabsTrigger value="bookings">Bookings</TabsTrigger>
             <TabsTrigger value="recurring">Recurring Series</TabsTrigger>
           </TabsList>
 
           <TabsContent value="bookings">
-
-            {bookings.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground mb-4">{t('bookings.no_bookings')}</p>
-                  <Button onClick={() => navigate("/dashboard")}>
-                    {t('bookings.book_first')}
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {bookings.map((booking) => (
-                  <Card
-                    key={booking.id}
-                    className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-primary group"
-                    onClick={() => setSelectedBooking(booking)}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl">{booking.service?.name ? t(`services.${booking.service.name}`, booking.service.name) : t('bookings.service_request')}</CardTitle>
-                        <div className="flex items-center gap-2">
-                          {booking.status === "completed" && !booking.rating && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => openRatingDialog(booking.id, e)}
-                              className="mr-2 text-yellow-600 border-yellow-200 hover:bg-yellow-50"
-                            >
-                              <Star className="h-4 w-4 mr-1" /> {t('bookings.rate_worker')}
-                            </Button>
-                          )}
-                          {booking.rating && (
-                            <div className="flex items-center text-yellow-500 mr-2 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100 text-sm font-bold">
-                              {booking.rating} ★
-                            </div>
-                          )}
-                          <Badge variant={getStatusVariant(booking.status) as any}>
-                            {t(`status.${booking.status}`, booking.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()))}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex items-start gap-2">
-                          {booking.worker ? (
-                            <>
-                              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                              <div>
-                                <p className="text-sm text-muted-foreground">{t('bookings.helper')}</p>
-                                <p className="font-medium">{booking.worker.full_name}</p>
-                                <div className="flex items-center text-xs text-yellow-600">
-                                  <span className="font-bold mr-1">{booking.worker.rating}</span> ★
-                                </div>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                              <div>
-                                <p className="text-sm text-muted-foreground">{t('bookings.helper')}</p>
-                                <p className="italic text-gray-500">{t('bookings.searching')}</p>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                          <div>
-                            <p className="text-sm text-muted-foreground">{t('bookings.scheduled_for')}</p>
-                            <p className="font-medium">
-                              {new Date(booking.scheduled_at).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                        {(booking.address || booking.notes || t('bookings.location_not_specified')) && (
-                          <div className="flex items-start gap-2 md:col-span-2">
-                            <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                            <div>
-                              <p className="text-sm text-muted-foreground">{t('bookings.details_location')}</p>
-                              <p className="font-medium">
-                                {booking.address ? (
-                                  `${booking.address.address_line1}${booking.address.city ? `, ${booking.address.city}` : ''}`
-                                ) : (
-                                  booking.notes?.replace(/^Location:\s*/i, '') || t('bookings.location_not_specified')
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="md:col-span-2 pt-2 border-t flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">{t('bookings.total_amount')}</span>
-                          <span className="text-lg font-bold text-primary">₹{booking.total_amount}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            <Tabs defaultValue="upcoming" className="mt-4">
+              <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+                <TabsTrigger value="past">Past</TabsTrigger>
+              </TabsList>
+              <TabsContent value="upcoming" className="mt-4">
+                {renderBookingList(upcomingBookings, "No upcoming bookings found.")}
+              </TabsContent>
+              <TabsContent value="past" className="mt-4">
+                {renderBookingList(pastBookings, "No past bookings found.")}
+              </TabsContent>
+            </Tabs>
           </TabsContent>
           <TabsContent value="recurring">
             <RecurringBookingsList />
@@ -369,15 +430,26 @@ const MyBookings = () => {
                   <Badge variant={getStatusVariant(selectedBooking.status) as any} className="capitalize mb-2 block">
                     {t(`status.${selectedBooking.status}`, selectedBooking.status.replace('_', ' '))}
                   </Badge>
-                  {selectedBooking.status === "completed" && !selectedBooking.rating && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs h-7"
-                      onClick={(e) => openRatingDialog(selectedBooking.id, e)}
-                    >
-                      {t('bookings.rate_now')}
-                    </Button>
+                  {selectedBooking.status === "completed" && (
+                    <div className="flex gap-2 justify-end mb-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setPaymentBooking(selectedBooking)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Pay Now
+                      </Button>
+                      {!selectedBooking.rating && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-9"
+                          onClick={(e) => openRatingDialog(selectedBooking.id, e)}
+                        >
+                          {t('bookings.rate_now')}
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -508,7 +580,88 @@ const MyBookings = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <PaymentDialog
+        booking={paymentBooking}
+        open={!!paymentBooking}
+        onOpenChange={(open) => !open && setPaymentBooking(null)}
+        onConfirm={handlePaymentConfirm}
+      />
     </div>
+  );
+};
+
+// Payment Dialog Implementation
+const PaymentDialog = ({ booking, open, onOpenChange, onConfirm }: {
+  booking: Booking | null,
+  open: boolean,
+  onOpenChange: (open: boolean) => void,
+  onConfirm: (method: string) => Promise<void>
+}) => {
+  const [method, setMethod] = useState("upi");
+  const [loading, setLoading] = useState(false);
+
+  if (!booking) return null;
+
+  const handlePay = async () => {
+    setLoading(true);
+    await onConfirm(method);
+    setLoading(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Complete Payment</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="bg-primary/5 p-4 rounded-xl text-center">
+            <p className="text-muted-foreground text-sm uppercase tracking-wide">Amount Payable</p>
+            <p className="text-4xl font-black text-primary">₹{booking.total_amount}</p>
+          </div>
+
+          <div className="space-y-3">
+            <p className="font-semibold text-sm">Select Payment Mode</p>
+            <div
+              onClick={() => setMethod('upi')}
+              className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer ${method === 'upi' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:border-gray-400'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
+                </div>
+                <div>
+                  <p className="font-medium text-sm">UPI / Online</p>
+                  <p className="text-xs text-muted-foreground">GPay, PhonePe, Card</p>
+                </div>
+              </div>
+              {method === 'upi' && <div className="h-4 w-4 bg-primary rounded-full border-2 border-white ring-1 ring-primary" />}
+            </div>
+
+            <div
+              onClick={() => setMethod('cash')}
+              className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer ${method === 'cash' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:border-gray-400'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01m12 0h.01" /></svg>
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Cash</p>
+                  <p className="text-xs text-muted-foreground">Pay to Helper Directly</p>
+                </div>
+              </div>
+              {method === 'cash' && <div className="h-4 w-4 bg-primary rounded-full border-2 border-white ring-1 ring-primary" />}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handlePay} disabled={loading}>{loading ? 'Processing...' : `Pay ₹${booking.total_amount}`}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

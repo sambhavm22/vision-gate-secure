@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createHash } from "https://deno.land/std@0.160.0/hash/mod.ts";
 
 // Process occurrences scheduled within next 24 hours
 const PROCESSING_WINDOW_HOURS = 24;
@@ -86,10 +85,9 @@ Deno.serve(async (req: Request) => {
                         duration_minutes: rb.duration_minutes,
                         total_amount: rb.total_per_occurrence,
                         notes: `Recurring #${occurrence.occurrence_index}. ${rb.notes || ''}`,
-                        status: 'requested'
-                        // 'requested' allows worker to accept. 
-                        // If preferred_worker is set, it might go to 'matched' automatically in matching logic?
-                        // The schema default is 'requested'. 
+                        status: 'accepted'
+                        // Since the recurring series is active (accepted by worker), 
+                        // the individual occurrence should be considered accepted. 
                     })
                     .select()
                     .single();

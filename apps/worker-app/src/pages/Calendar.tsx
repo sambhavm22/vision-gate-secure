@@ -2,12 +2,12 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@vision-gate/supabase/client";
 import {
     Button,
+    cn,
     Dialog,
     DialogContent,
     DialogTitle,
     useToast
 } from "@vision-gate/ui";
-import { cn } from "@vision-gate/ui/utils";
 import {
     addDays,
     addMonths,
@@ -33,14 +33,12 @@ import {
     MoreHorizontal
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 type ViewType = 'day' | 'week' | 'month';
 
 export default function CalendarPage() {
     const { workerProfile } = useAuth();
-    const { t } = useTranslation();
     const { toast } = useToast();
     const navigate = useNavigate();
 
