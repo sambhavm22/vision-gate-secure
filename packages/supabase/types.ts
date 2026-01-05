@@ -334,30 +334,30 @@ export type Database = {
                     user_id: string
                     title: string | null
                     message: string | null
-                    type: string | null
                     metadata: Json | null
                     is_read: boolean
                     created_at: string
+                    priority: string | null
                 }
                 Insert: {
                     id?: string
                     user_id: string
                     title?: string | null
                     message?: string | null
-                    type?: string | null
                     metadata?: Json | null
                     is_read?: boolean
                     created_at?: string
+                    priority?: string | null
                 }
                 Update: {
                     id?: string
                     user_id?: string
                     title?: string | null
                     message?: string | null
-                    type?: string | null
                     metadata?: Json | null
                     is_read?: boolean
                     created_at?: string
+                    priority?: string | null
                 }
             }
             recurring_booking_audit_log: {

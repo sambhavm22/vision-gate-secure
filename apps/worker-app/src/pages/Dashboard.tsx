@@ -285,6 +285,30 @@ export default function Dashboard() {
         }
     };
 
+    const handleComplete = async (bookingId: string) => {
+        if (!workerProfile) return;
+        setProcessingId(bookingId);
+        try {
+            const { error } = await (supabase.rpc as any)("complete_booking", {
+                p_booking_id: bookingId,
+                p_worker_id: workerProfile.id
+            });
+
+            if (error) throw error;
+
+            toast({
+                title: "Job Completed",
+                description: "Booking has been marked as completed. The customer has been notified.",
+            });
+
+            await fetchBookings();
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     if (!workerProfile) return null;
 
     return (
@@ -575,6 +599,7 @@ export default function Dashboard() {
                                         booking={booking}
                                         type="my-jobs"
                                         onCancel={handleCancel}
+                                        onComplete={handleComplete}
                                         isProcessing={processingId === booking.id}
                                     />
                                 ))}

@@ -8,10 +8,11 @@ interface BookingCardProps {
     type: 'marketplace' | 'my-jobs';
     onAccept?: (id: string) => void;
     onCancel?: (id: string) => void;
+    onComplete?: (id: string) => void;
     isProcessing?: boolean;
 }
 
-export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }: BookingCardProps) {
+export function BookingCard({ booking, type, onAccept, onCancel, onComplete, isProcessing }: BookingCardProps) {
     const { t } = useTranslation();
     const isMarket = type === 'marketplace';
 
@@ -21,6 +22,8 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
     const city = booking.city || booking.address?.city;
     const price = booking.total_amount;
     const scheduledAt = new Date(booking.scheduled_at);
+
+    const canComplete = !isMarket && onComplete && ['accepted', 'en_route', 'in_progress'].includes(booking.status);
 
     return (
         <Card className="w-full mb-4 hover:shadow-md transition-shadow">
@@ -69,8 +72,14 @@ export function BookingCard({ booking, type, onAccept, onCancel, isProcessing }:
                         <CheckCircle className="ml-2 h-4 w-4" />
                     </Button>
                 )}
-                {!isMarket && onCancel && (
-                    <Button variant="destructive" size="sm" onClick={() => onCancel(booking.booking_id || booking.id)} disabled={isProcessing}>
+                {canComplete && (
+                    <Button onClick={() => onComplete(booking.booking_id || booking.id)} disabled={isProcessing} className="bg-emerald-600 hover:bg-emerald-700">
+                        {isProcessing ? t('common.loading') : 'Mark Complete'}
+                        <CheckCircle className="ml-2 h-4 w-4" />
+                    </Button>
+                )}
+                {!isMarket && onCancel && booking.status === 'accepted' && (
+                    <Button variant="outline" size="sm" onClick={() => onCancel(booking.booking_id || booking.id)} disabled={isProcessing}>
                         {t('jobs.cancel')}
                         <XCircle className="ml-2 h-4 w-4" />
                     </Button>

@@ -21,16 +21,17 @@ BEGIN
   END IF;
 
   -- 3. Find nearby, eligible, and AVAILABLE workers
-  INSERT INTO public.notifications (user_id, title, message, type, metadata)
+  INSERT INTO public.notifications (user_id, title, message, priority, metadata)
   SELECT 
     wp.user_id,
     'New Booking Available',
     v_service_name || ' booking available near you!',
-    'new_booking_available',
+    'Medium',
     jsonb_build_object(
       'booking_id', NEW.id,
       'service_name', v_service_name,
-      'scheduled_at', NEW.scheduled_at
+      'scheduled_at', NEW.scheduled_at,
+      'type', 'new_booking_available'
     )
   FROM public.workers_public wp
   WHERE 

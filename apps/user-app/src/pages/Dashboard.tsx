@@ -1,11 +1,12 @@
 import logo from "@/assets/helperhub-logo.png";
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { NotificationsDialog } from "@/components/NotificationsDialog";
 import { supabase } from "@vision-gate/supabase/client";
 import { Database } from "@vision-gate/supabase/types";
 import { Badge, Button, Calendar as CalendarComponent, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useIsMobile, useNotifications, useToast } from "@vision-gate/ui";
 import { format } from "date-fns";
-import { ArrowLeft, ArrowRight, Calendar, CheckCircle, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bell, Calendar, CheckCircle, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -69,6 +70,7 @@ const Dashboard = () => {
   const [showReferralDialog, setShowReferralDialog] = useState(false);
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
   const [userId, setUserId] = useState<string | undefined>(undefined);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Real-time Notifications
   useNotifications(userId);
@@ -398,6 +400,13 @@ const Dashboard = () => {
 
           <div className="flex items-center gap-2">
             <LanguageToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowNotifications(true)}
+            >
+              <Bell className="h-5 w-5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -754,6 +763,12 @@ const Dashboard = () => {
           )}
         </section>
       </main>
+
+      <NotificationsDialog
+        open={showNotifications}
+        onOpenChange={setShowNotifications}
+        userId={userId || ''}
+      />
 
 
       {/* Availability Dialog */}
