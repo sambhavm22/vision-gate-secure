@@ -4,24 +4,15 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationsDialog } from "@/components/NotificationsDialog";
 import { supabase } from "@vision-gate/supabase/client";
 import { Database } from "@vision-gate/supabase/types";
-import { Badge, Button, Calendar as CalendarComponent, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useIsMobile, useNotifications, useToast } from "@vision-gate/ui";
+import { Badge, Button, Calendar as CalendarComponent, Card, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useIsMobile, useNotifications, useToast } from "@vision-gate/ui";
 import { format } from "date-fns";
-import { ArrowLeft, ArrowRight, Bell, Calendar, CheckCircle, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Bell, Calendar, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 type Service = Database['public']['Tables']['services']['Row'];
-type Worker = Database['public']['Tables']['workers_public']['Row'];
 
-interface Helper extends Worker {
-  dist_meters?: number;
-  // UI helpers
-  city?: string;
-  experience_years?: number;
-  service_type?: string;
-  verified?: boolean;
-}
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -30,14 +21,7 @@ const Dashboard = () => {
   const isMobile = useIsMobile();
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedService, setSelectedService] = useState<string>("all");
   const [services, setServices] = useState<Service[]>([]);
-  const [helpers, setHelpers] = useState<Helper[]>([]);
-  const [selectedHelper, setSelectedHelper] = useState<Helper | null>(null);
-  // Availability simplified: assume available
-  const [showAvailability, setShowAvailability] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [bookingLocation, setBookingLocation] = useState("");
@@ -167,7 +151,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchServices();
-    fetchHelpers();
     checkAuth();
   }, []);
 
@@ -214,85 +197,14 @@ const Dashboard = () => {
     }
   };
 
-  const fetchHelpers = async () => {
-    try {
-      setLoading(true);
-
-      // Use RPC for nearby workers
-      // We explicitly cast the response or use `any` temporarily if RPC types are not fully generated yet
-      const { data, error } = await (supabase.rpc as any)('nearby_workers', {
-        lat: userLat,
-        lng: userLng,
-        radius_km: 10,
-        service_filter: null // Add missing optional arg if strict
-      }); // Cast args if TS complains about overload
-
-      if (error) {
-        console.error("RPC Error, falling back to simple select:", error);
-        // Fallback
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from("workers_public")
-          .select("*")
-          .order("rating", { ascending: false });
-
-        if (fallbackError) throw fallbackError;
-        setHelpers((fallbackData || []).map((w: any) => ({
-          ...w,
-          service_types: w.service_types || [],
-          service_type: w.service_types?.[0] || 'Helper', // UI compat
-          verified: w.is_verified,
-          city: 'Mumbai',
-          experience_years: 5
-        })));
-      } else {
-        // Map RPC results
-        setHelpers((data || []).map((h: any) => ({
-          ...h,
-          // Ensure compatibility with Helper interfcae
-          id: h.id,
-          full_name: h.full_name,
-          rating: h.rating,
-          hourly_rate: h.hourly_rate,
-          profile_image_url: h.profile_image_url,
-          // Fields potentially missing from RPC return, add defaults
-          service_types: h.service_types || [], // Check if RPC returns this!
-          total_reviews: h.total_reviews || 0,
-          is_verified: h.is_verified,
-          bio: h.bio || '',
-          created_at: h.created_at || new Date().toISOString(),
-
-          // UI Mappings
-          service_type: h.service_types?.[0] || 'Helper',
-          verified: h.is_verified,
-          city: 'Mumbai',
-          experience_years: 5
-        })));
-      }
-    } catch (error) {
-      console.error("Error fetching helpers:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load experts",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleServiceClick = (serviceName: string) => {
     setActiveGuidelineService(serviceName);
     setShowServiceGuidelines(true);
   };
 
-  const handleHelperClick = async (helper: Helper) => {
-    setSelectedHelper(helper);
-    setShowAvailability(true);
-    // Availability assumed
-  };
-
   const handleBooking = async () => {
-    if (!selectedHelper || !bookingDate || !bookingTime || !bookingLocation) {
+    if (!bookingDate || !bookingTime || !bookingLocation) {
       toast({
         title: "Missing Information",
         description: "Please fill in all booking details",
@@ -308,13 +220,9 @@ const Dashboard = () => {
         return;
       }
 
-      // Use create_booking RPC for better security/validation if possible, 
-      // but sticking to direct insert as per previous code attempt to fix types first.
-      // Ideally: const { error } = await supabase.rpc('create_booking', { ... });
-
       const { error } = await supabase.from("bookings").insert({
         customer_id: session.user.id,
-        worker_id: selectedHelper.id,
+        worker_id: null, // Auto-assign: Do not request specific worker
         service_id: 1, // Placeholder: need to look up ID based on service name
         scheduled_at: new Date(`${bookingDate}T${bookingTime}`).toISOString(),
         address_id: null, // Using text location for now which is not in schema directly? 
@@ -334,11 +242,9 @@ const Dashboard = () => {
 
       toast({
         title: "Booking Confirmed!",
-        description: `Your booking with ${selectedHelper.full_name} has been confirmed.`,
+        description: `Your booking has been confirmed and we are searching for a provider.`,
       });
 
-      setShowAvailability(false);
-      setSelectedHelper(null);
       setBookingDate("");
       setBookingTime("");
       setBookingLocation("");
@@ -358,14 +264,6 @@ const Dashboard = () => {
   };
 
 
-  const filteredHelpers = useMemo(() => {
-    return helpers.filter((helper) => {
-      const matchesSearch = helper.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (helper.service_types && helper.service_types.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
-      const matchesService = selectedService === "all" || (helper.service_types && helper.service_types.includes(selectedService));
-      return matchesSearch && matchesService;
-    });
-  }, [helpers, searchQuery, selectedService]);
 
   useEffect(() => {
     localStorage.setItem("darkMode", darkMode.toString());
@@ -621,147 +519,6 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Experts Nearby Map Visual */}
-        <section className="mb-12" id="experts-section">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border mb-8">
-            <h2 className="text-xl font-bold mb-4 text-center text-primary">
-              {t('dashboard.experts_nearby', { count: filteredHelpers.length })}
-            </h2>
-
-            {/* Mock Map Container */}
-            <div className="relative w-full h-64 bg-slate-100 rounded-2xl overflow-hidden mb-6">
-              {/* Map Background Pattern (CSS-based mock) */}
-              <div className="absolute inset-0 opacity-20" style={{
-                backgroundImage: 'radial-gradient(#cbd5e1 2px, transparent 2px)',
-                backgroundSize: '20px 20px'
-              }}></div>
-
-              {/* Map Streets Mock (CSS) */}
-              <div className="absolute top-1/4 left-0 w-full h-4 bg-white transform -rotate-6"></div>
-              <div className="absolute top-0 right-1/3 w-4 h-full bg-white transform rotate-12"></div>
-              <div className="absolute bottom-1/4 left-0 w-3/4 h-4 bg-white"></div>
-
-              {/* Scattered Experts Icons (Mock positions) */}
-              <div className="absolute top-1/3 left-1/4 animate-pulse">
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-pink-500/20 rounded-full animate-ping"></div>
-                  <div className="h-8 w-8 bg-pink-100 rounded-full flex items-center justify-center border-2 border-white shadow-md relative z-10">
-                    <User className="h-4 w-4 text-pink-600" />
-                  </div>
-                </div>
-              </div>
-              <div className="absolute top-1/2 right-1/4 animate-pulse delay-75">
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-pink-500/20 rounded-full animate-ping"></div>
-                  <div className="h-8 w-8 bg-pink-100 rounded-full flex items-center justify-center border-2 border-white shadow-md relative z-10">
-                    <User className="h-4 w-4 text-pink-600" />
-                  </div>
-                </div>
-              </div>
-              <div className="absolute bottom-1/3 left-1/2 animate-pulse delay-150">
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-pink-500/20 rounded-full animate-ping"></div>
-                  <div className="h-8 w-8 bg-pink-100 rounded-full flex items-center justify-center border-2 border-white shadow-md relative z-10">
-                    <User className="h-4 w-4 text-pink-600" />
-                  </div>
-                </div>
-              </div>
-              <div className="absolute top-1/4 right-1/3 animate-pulse delay-300">
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-pink-500/20 rounded-full animate-ping"></div>
-                  <div className="h-8 w-8 bg-pink-100 rounded-full flex items-center justify-center border-2 border-white shadow-md relative z-10">
-                    <User className="h-4 w-4 text-pink-600" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-
-          <div
-            className="bg-gradient-to-r from-purple-500 to-purple-400 rounded-2xl p-4 flex items-center justify-between text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow mb-12"
-            onClick={() => setShowReferralDialog(true)}
-          >
-            <div className="flex items-center gap-4">
-              <img src="/src/assets/referral-gift-box.png" alt="Gift" className="h-12 w-12 object-contain" />
-              <div>
-                <h3 className="font-bold text-lg">{t('dashboard.refer_friend')}</h3>
-                <p className="text-purple-100 text-sm">{t('dashboard.refer_desc')}</p>
-              </div>
-            </div>
-            <div className="bg-white/20 p-2 rounded-full">
-              <ArrowRight className="h-5 w-5 text-white" />
-            </div>
-          </div>
-        </section>
-        <section>
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">{t('dashboard.loading_helpers')}</p>
-            </div>
-          ) : filteredHelpers.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">{t('dashboard.no_helpers')}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredHelpers.map((helper) => (
-                <Card
-                  key={helper.id}
-                  className="cursor-pointer hover:shadow-xl transition-all duration-300"
-                  onClick={() => handleHelperClick(helper)}
-                >
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start gap-4">
-                      <div className="relative">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-2xl font-bold">
-                          {helper.full_name.charAt(0)}
-                        </div>
-                        {helper.verified && (
-                          <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1" title="Verified Professional">
-                            <CheckCircle className="h-3 w-3" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg truncate">{helper.full_name}</CardTitle>
-                          <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
-                            <MapPin className="h-3 w-3 mr-1 inline" />
-                            0.8 km
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{helper.service_type}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-medium">{helper.rating}</span>
-                          <span className="text-xs text-muted-foreground">({helper.total_reviews})</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span>{helper.city}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        <span>{helper.experience_years} years experience</span>
-                      </div>
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <span className="font-semibold text-primary">₹{helper.hourly_rate}/hr</span>
-                        <Button size="sm">{t('dashboard.book_now', 'Book Now')}</Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </section>
       </main>
 
       <NotificationsDialog
@@ -771,92 +528,6 @@ const Dashboard = () => {
       />
 
 
-      {/* Availability Dialog */}
-      <Dialog open={showAvailability} onOpenChange={setShowAvailability}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t('booking_dialog.book_helper', { name: selectedHelper?.full_name })}</DialogTitle>
-          </DialogHeader>
-
-          {selectedHelper && (
-            <div className="space-y-6">
-              <div className="flex items-start gap-4 p-4 bg-muted rounded-lg">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-2xl font-bold">
-                  {selectedHelper.full_name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{selectedHelper.full_name}</h3>
-                  <p className="text-sm text-muted-foreground">{selectedHelper.service_type}</p>
-                  <p className="text-sm mt-2">{selectedHelper.bio}</p>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">{selectedHelper.rating}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {t('booking_dialog.exp_years', { years: selectedHelper.experience_years })}
-                    </span>
-                    <span className="text-sm font-semibold text-primary">
-                      ₹{selectedHelper.hourly_rate}/hr
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">{t('booking_dialog.select_date')}</label>
-                  <Input
-                    type="date"
-                    value={bookingDate}
-                    onChange={(e) => setBookingDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">{t('booking_dialog.select_time')}</label>
-                  <Input
-                    type="time"
-                    value={bookingTime}
-                    onChange={(e) => setBookingTime(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">{t('booking_dialog.location')}</label>
-                  <Input
-                    placeholder="Enter address details..."
-                    value={bookingLocation}
-                    onChange={(e) => setBookingLocation(e.target.value)}
-                  />
-                </div>
-
-                {/* Availability removed as per plan */}
-
-                <div className="flex gap-4 pt-4 border-t mt-4">
-                  <Button className="flex-1" onClick={handleBooking}>
-                    {t('booking_dialog.confirm_booking')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 border-primary text-primary hover:bg-primary/10"
-                    onClick={() => {
-                      if (!bookingDate || !bookingTime || !bookingLocation) {
-                        toast({ title: "Details Required", description: "Select date/time first", variant: "destructive" });
-                        return;
-                      }
-                      setShowRecurringDialog(true);
-                    }}
-                  >
-                    Make Recurring
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Service Guidelines Dialog */}
       <Dialog open={showServiceGuidelines} onOpenChange={setShowServiceGuidelines}>
@@ -901,7 +572,6 @@ const Dashboard = () => {
                 className="flex-1"
                 onClick={() => {
                   setShowServiceGuidelines(false);
-                  setSelectedService(activeGuidelineService);
                   setShowPrebookDialog(true);
                 }}
               >

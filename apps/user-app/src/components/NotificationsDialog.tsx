@@ -54,7 +54,7 @@ export function NotificationsDialog({ open, onOpenChange, userId }: Notification
 
         await supabase
             .from("notifications")
-            .update({ is_read: true })
+            .update({ is_read: true } as any)
             .eq("id", notification.id);
     };
 
@@ -78,8 +78,8 @@ export function NotificationsDialog({ open, onOpenChange, userId }: Notification
                                     key={notification.id}
                                     onClick={() => markAsRead(notification)}
                                     className={`p-4 rounded-lg border cursor-pointer transition-colors ${notification.is_read
-                                            ? "bg-background border-border"
-                                            : "bg-primary/5 border-primary/20 hover:bg-primary/10"
+                                        ? "bg-background border-border"
+                                        : "bg-primary/5 border-primary/20 hover:bg-primary/10"
                                         }`}
                                 >
                                     <div className="flex justify-between items-start mb-1">
