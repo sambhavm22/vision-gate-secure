@@ -46,6 +46,7 @@ export * from "./components/ui/toggle";
 export * from "./components/ui/toggle-group";
 export * from "./components/ui/tooltip";
 export { toast, useToast } from "./components/ui/use-toast";
+export { useDeviceToken } from "./hooks/use-device-token";
 export { useIsMobile } from "./hooks/use-mobile";
 export { useNotifications } from "./hooks/use-notifications";
 export * from "./lib/utils";

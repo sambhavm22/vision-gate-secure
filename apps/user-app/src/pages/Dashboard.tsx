@@ -4,7 +4,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationsDialog } from "@/components/NotificationsDialog";
 import { supabase } from "@vision-gate/supabase/client";
 import { Database } from "@vision-gate/supabase/types";
-import { Badge, Button, Calendar as CalendarComponent, Card, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useIsMobile, useNotifications, useToast } from "@vision-gate/ui";
+import { Badge, Button, Calendar as CalendarComponent, Card, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useDeviceToken, useIsMobile, useNotifications, useToast } from "@vision-gate/ui";
 import { format } from "date-fns";
 import { ArrowLeft, ArrowRight, Bell, Calendar, Clock, Home, LogOut, MapPin, Moon, Sparkles, Star, Sun, User } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -58,6 +58,7 @@ const Dashboard = () => {
 
   // Real-time Notifications
   useNotifications(userId);
+  useDeviceToken(userId);
 
 
 

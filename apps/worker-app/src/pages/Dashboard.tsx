@@ -4,7 +4,7 @@ import { RecurringJobCard } from "@/components/RecurringJobCard";
 import { useAuth } from "@/context/AuthContext";
 import type { RecurringBooking } from "@/types";
 import { supabase } from "@vision-gate/supabase/client";
-import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useNotifications, useToast } from "@vision-gate/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useDeviceToken, useNotifications, useToast } from "@vision-gate/ui";
 import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ export default function Dashboard() {
 
     // Real-time Notifications
     useNotifications(workerProfile?.user_id);
+    useDeviceToken(workerProfile?.user_id);
     const [marketBookings, setMarketBookings] = useState<any[]>([]);
     const [myBookings, setMyBookings] = useState<any[]>([]);
     const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
