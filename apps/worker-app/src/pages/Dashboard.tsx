@@ -4,8 +4,8 @@ import { RecurringJobCard } from "@/components/RecurringJobCard";
 import { useAuth } from "@/context/AuthContext";
 import type { RecurringBooking } from "@/types";
 import { supabase } from "@vision-gate/supabase/client";
-import { Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useDeviceToken, useNotifications, useToast } from "@vision-gate/ui";
-import { Briefcase, CalendarClock, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
+import { Button, Card, CardContent, CardHeader, CardTitle, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, useDeviceToken, useNotifications, useToast } from "@vision-gate/ui";
+import { Briefcase, CalendarClock, Download, FileSpreadsheet, FileText, Loader2, MapPin, MapPinOff, Moon, RefreshCw, Star, Sun, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +21,8 @@ export default function Dashboard() {
     useDeviceToken(workerProfile?.user_id);
     const [marketBookings, setMarketBookings] = useState<any[]>([]);
     const [myBookings, setMyBookings] = useState<any[]>([]);
+    const [pastBookings, setPastBookings] = useState<any[]>([]);
+    const [isExporting, setIsExporting] = useState(false);
     const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
     const [marketSubscriptions, setMarketSubscriptions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -144,6 +146,21 @@ export default function Dashboard() {
             if (marketError) throw marketError;
             setMarketBookings(marketData || []);
 
+            // 1.5 Fetch Past Bookings
+            const { data: pastData, error: pastError } = await supabase
+                .from("bookings")
+                .select(`
+                    *,
+                    service:services(name),
+                    address:addresses(address_line1, city, location)
+                `)
+                .eq("worker_id", workerProfile.id)
+                .lt("scheduled_at", new Date().toISOString())
+                .order("scheduled_at", { ascending: false });
+
+            if (pastError) throw pastError;
+            setPastBookings(pastData || []);
+
             // 2. Fetch My Bookings (Direct Select)
             const { data: myData, error: myError } = await supabase
                 .from("bookings")
@@ -190,6 +207,53 @@ export default function Dashboard() {
             console.error(error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleExport = async (format: 'pdf' | 'xlsx') => {
+        try {
+            setIsExporting(true);
+            toast({ title: t('export.generating', 'Generating Report'), description: t('export.wait', 'Please wait while we prepare your file...') });
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const { data, error } = await supabase.functions.invoke('generate-booking-export', {
+                body: {
+                    format,
+                    role: 'worker'
+                }
+            });
+
+            if (error) throw error;
+            if (!data.success || !data.downloadUrl) throw new Error("Failed to generate download URL");
+
+            // Fetch the file and trigger download as a blob to force "download" behavior
+            const response = await fetch(data.downloadUrl);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.setAttribute('download', `bookings_history_${new Date().getTime()}.${format}`);
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+
+            toast({ title: t('export.success', 'Export Successful'), description: t('export.downloading', 'Your file is downloading.') });
+
+        } catch (error: any) {
+            console.error("Export Error:", error);
+            toast({
+                title: t('export.failed', 'Export Failed'),
+                description: error.message || "Could not generate report.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -429,7 +493,7 @@ export default function Dashboard() {
 
                 {/* Main Content Tabs */}
                 <Tabs defaultValue="marketplace" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 mb-6">
+                    <TabsList className="grid w-full grid-cols-5 bg-muted/50 p-1 mb-6">
                         <TabsTrigger value="marketplace" className="gap-2">
                             <Briefcase className="h-4 w-4" />
                             {!isMobile && t('dashboard.tabs.marketplace')}
@@ -445,6 +509,10 @@ export default function Dashboard() {
                         <TabsTrigger value="recurring" className="gap-2">
                             <CalendarClock className="h-4 w-4" />
                             {!isMobile && "Fixed Subs"}
+                        </TabsTrigger>
+                        <TabsTrigger value="history" className="gap-2">
+                            <FileText className="h-4 w-4" />
+                            {!isMobile && "History"}
                         </TabsTrigger>
                     </TabsList>
 
@@ -633,6 +701,54 @@ export default function Dashboard() {
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
                                 {recurringBookings.map(booking => (
                                     <RecurringJobCard key={booking.id} booking={booking} />
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="history" className="space-y-4 min-h-[300px]">
+                        <div className="flex justify-between mb-2">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <Briefcase className="h-5 w-5" />
+                                Past Bookings
+                            </h3>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" disabled={isExporting}>
+                                        <Download className="h-4 w-4 mr-2" />
+                                        {isExporting ? 'Exporting...' : 'Download History'}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                                        <FileText className="h-4 w-4 mr-2" /> Download as PDF
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                                        <FileSpreadsheet className="h-4 w-4 mr-2" /> Download as Excel
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                        {isLoading ? (
+                            <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
+                        ) : pastBookings.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/30 text-center">
+                                <Briefcase className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
+                                <h3 className="text-lg font-semibold">No Past Bookings</h3>
+                                <p className="text-muted-foreground">You haven't completed any jobs yet.</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+                                {pastBookings.map(booking => (
+                                    <BookingCard
+                                        key={booking.id}
+                                        booking={booking}
+                                        type="my-jobs" // Reuse my-jobs type for now as it shows status
+                                        onCancel={handleCancel} // Probably disable actions for past jobs?
+                                        onComplete={handleComplete}
+                                        isProcessing={processingId === booking.id}
+                                    // Maybe pass a 'readonly' or 'history' prop if BookingCard supports it
+                                    />
                                 ))}
                             </div>
                         )}

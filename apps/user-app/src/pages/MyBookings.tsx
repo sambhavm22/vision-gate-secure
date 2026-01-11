@@ -1,8 +1,8 @@
 import RecurringBookingsList from "@/components/RecurringBookingsList";
 import { supabase } from "@vision-gate/supabase/client";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@vision-gate/ui";
 import { format } from "date-fns";
-import { ArrowLeft, Clock, MapPin, RefreshCw, Star, User } from "lucide-react";
+import { ArrowLeft, Clock, Download, FileSpreadsheet, FileText, MapPin, RefreshCw, Star, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -49,6 +49,55 @@ const MyBookings = () => {
   const [reviewVal, setReviewVal] = useState("");
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [paymentBooking, setPaymentBooking] = useState<Booking | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (format: 'pdf' | 'xlsx') => {
+    try {
+      setIsExporting(true);
+      toast({ title: "Generating Report", description: "Please wait while we prepare your file..." });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('generate-booking-export', {
+        body: {
+          format,
+          role: 'user',
+          // Optional: from_date: '2024-01-01' 
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success || !data.downloadUrl) throw new Error("Failed to generate download URL");
+
+      // Fetch the file and trigger download as a blob to force "download" behavior
+      const response = await fetch(data.downloadUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', `bookings_history_${new Date().getTime()}.${format}`);
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+
+      toast({ title: "Export Successful", description: "Your file is downloading." });
+
+    } catch (error: any) {
+      console.error("Export Error:", error);
+      toast({
+        title: "Export Failed",
+        description: error.message || "Could not generate report.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handlePaymentConfirm = async (method: string) => {
     if (!paymentBooking) return;
@@ -402,6 +451,24 @@ const MyBookings = () => {
                 {renderBookingList(upcomingBookings, "No upcoming bookings found.")}
               </TabsContent>
               <TabsContent value="past" className="mt-4">
+                <div className="flex justify-end mb-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={isExporting}>
+                        <Download className="h-4 w-4 mr-2" />
+                        {isExporting ? 'Exporting...' : 'Download History'}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                        <FileText className="h-4 w-4 mr-2" /> Download as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" /> Download as Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 {renderBookingList(pastBookings, "No past bookings found.")}
               </TabsContent>
             </Tabs>
