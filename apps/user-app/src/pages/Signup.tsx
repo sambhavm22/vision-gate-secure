@@ -48,18 +48,10 @@ const Signup = () => {
         variant: "destructive",
       });
     } else {
-      // Check if email confirmation is required
-      if (data.user && !data.user.email_confirmed_at) {
-        toast({
-          title: "Check your email!",
-          description: "Please confirm your email address to complete registration. Check your inbox for a confirmation link.",
-        });
-      } else {
-        toast({
-          title: "Account created!",
-          description: "Welcome to HelperHub. You can now start booking helpers.",
-        });
-      }
+      toast({
+        title: "Account created!",
+        description: "Welcome to HelperHub. You can now start booking helpers.",
+      });
     }
   };
 

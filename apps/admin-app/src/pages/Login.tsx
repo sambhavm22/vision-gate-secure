@@ -10,7 +10,7 @@ import {
     Input,
     useToast
 } from "@vision-gate/ui";
-import React, { useState } from "react"; // Added React import for event types
+import React, { useEffect, useState } from "react"; // Added React import for event types
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
@@ -19,6 +19,17 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const { toast } = useToast();
+
+    // Clear any stale sessions or invalid tokens when visiting the login page
+    useEffect(() => {
+        const clearSession = async () => {
+            const { error } = await supabase.auth.getSession();
+            if (error || (await supabase.auth.getSession()).data.session) {
+                await supabase.auth.signOut();
+            }
+        };
+        clearSession();
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,18 +44,18 @@ export default function Login() {
             if (authError) throw authError;
 
             if (session) {
-                // Check if user is admin
-                const { data: admin, error: adminError } = await supabase
-                    .from("admin_users")
+                // Check if user is super_admin
+                const { data: profile, error: profileError } = await supabase
+                    .from("profiles") // Changed from admin_users
                     .select("role")
                     .eq("id", session.user.id)
                     .single();
 
-                if (adminError || !admin) {
+                if (profileError || !profile || profile.role !== 'super_admin') {
                     await supabase.auth.signOut();
                     toast({
                         title: "Unauthorized",
-                        description: "You do not have admin access.",
+                        description: "Access restricted to super administrators.",
                         variant: "destructive",
                     });
                 } else {
