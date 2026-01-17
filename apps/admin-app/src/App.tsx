@@ -5,7 +5,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AuditLogs from "./pages/AuditLogs";
 import Bookings from "./pages/Bookings";
 import Dashboard from "./pages/Dashboard";
+import Issues from "./pages/Issues";
 import Login from "./pages/Login";
+import Payments from "./pages/Payments";
+import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Workers from "./pages/Workers";
 
@@ -22,8 +25,11 @@ function App() {
                         <Route path="/bookings" element={<Bookings />} />
                         <Route path="/workers" element={<Workers />} />
                         <Route path="/users" element={<Users />} />
-                        <Route path="audit-logs" element={<AuditLogs />} />
-                        <Route path="/settings" element={<div>Settings Placeholder</div>} />
+                        <Route path="/payments" element={<Payments />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/issues" element={<Issues />} />
+                        <Route path="/audit-logs" element={<AuditLogs />} />
+                        <Route path="/settings" element={<div className="text-muted-foreground">Settings coming soon...</div>} />
                     </Route>
                 </Route>
             </Routes>

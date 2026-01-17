@@ -1,8 +1,11 @@
 import { supabase } from "@vision-gate/supabase/client";
 import { Button, cn } from "@vision-gate/ui";
 import {
+    AlertCircle,
     CalendarDays,
     ChevronRight,
+    CreditCard,
+    FileText,
     LayoutDashboard,
     LogOut,
     Settings,
@@ -17,6 +20,9 @@ const navItems = [
     { label: "Bookings", href: "/bookings", icon: CalendarDays },
     { label: "Workers", href: "/workers", icon: UserRound },
     { label: "Users", href: "/users", icon: Users },
+    { label: "Payments", href: "/payments", icon: CreditCard },
+    { label: "Reports", href: "/reports", icon: FileText },
+    { label: "Issues", href: "/issues", icon: AlertCircle },
     { label: "Audit Logs", href: "/audit-logs", icon: ShieldEllipsis },
     { label: "Settings", href: "/settings", icon: Settings },
 ];

@@ -1,83 +1,51 @@
-import { supabase } from "@vision-gate/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@vision-gate/ui";
-import { CalendarDays, TrendingUp, UserRound, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { AreaDistributionChart } from "../components/dashboard/AreaDistributionChart";
+import { BookingStatusChart } from "../components/dashboard/BookingStatusChart";
+import { DashboardHeader } from "../components/dashboard/DashboardHeader";
+import { NeedsAttentionPanel } from "../components/dashboard/NeedsAttentionPanel";
+import { RecentActivity } from "../components/dashboard/RecentActivity";
+import { RevenueChart } from "../components/dashboard/RevenueChart";
+import { StatsCards } from "../components/dashboard/StatsCards";
+import { TopServicesChart } from "../components/dashboard/TopServicesChart";
+import { DateRange, useDashboardData } from "../hooks/useDashboardData";
 
 export default function Dashboard() {
-    const [stats, setStats] = useState({
-        totalUsers: 0,
-        totalWorkers: 0,
-        totalBookings: 0,
-        todaysBookings: 0
-    });
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        async function fetchStats() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-
-            const [
-                { count: users },
-                { count: workers },
-                { count: bookings },
-                { count: todays }
-            ] = await Promise.all([
-                supabase.from("profiles").select("*", { count: "exact", head: true }),
-                supabase.from("workers_public").select("*", { count: "exact", head: true }),
-                supabase.from("bookings").select("*", { count: "exact", head: true }),
-                supabase.from("bookings").select("*", { count: "exact", head: true })
-                    .gte("scheduled_at", today.toISOString())
-                    .lt("scheduled_at", tomorrow.toISOString())
-            ]);
-
-            setStats({
-                totalUsers: users || 0,
-                totalWorkers: workers || 0,
-                totalBookings: bookings || 0,
-                todaysBookings: todays || 0
-            });
-            setLoading(false);
-        }
-        fetchStats();
-    }, []);
-
-    const statCards = [
-        { title: "Total Users", value: stats.totalUsers, icon: Users, color: "text-blue-600" },
-        { title: "Total Workers", value: stats.totalWorkers, icon: UserRound, color: "text-green-600" },
-        { title: "Total Bookings", value: stats.totalBookings, icon: CalendarDays, color: "text-purple-600" },
-        { title: "Today's Bookings", value: stats.todaysBookings, icon: TrendingUp, color: "text-orange-600" },
-    ];
+    const [dateRange, setDateRange] = useState<DateRange>("7d");
+    const { stats, loading } = useDashboardData(dateRange);
 
     return (
-        <div className="space-y-8">
-            <div>
-                <h2 className="text-3xl font-black tracking-tight">Admin Overview</h2>
-                <p className="text-muted-foreground">Real-time performance metrics</p>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header Section */}
+            <DashboardHeader dateRange={dateRange} setDateRange={setDateRange} />
+
+            {/* KPI Cards */}
+            <StatsCards stats={stats} loading={loading} />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Revenue Chart (Spans 3 cols on desktop) */}
+                <RevenueChart data={stats?.revenueTrend || []} />
+
+                {/* Booking Status Pie Chart (Spans 1 col) */}
+                <BookingStatusChart data={stats?.bookingStatus || []} />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {statCards.map((stat) => (
-                    <Card key={stat.title}>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                            <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                            <stat.icon className={cn("h-4 w-4", stat.color)} />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {loading ? "..." : stat.value.toLocaleString()}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+            {/* Secondary Row: Alerts + Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Needs Attention Panel */}
+                <NeedsAttentionPanel items={stats?.needsAttention || []} loading={loading} />
+
+                {/* Top Services Chart */}
+                <TopServicesChart data={stats?.topServices || []} />
+
+                {/* Area Distribution Chart */}
+                <AreaDistributionChart data={stats?.areaDistribution || []} />
+            </div>
+
+            {/* Recent Activity Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RecentActivity items={stats?.recentActivity || []} loading={loading} />
             </div>
         </div>
     );
-}
-
-// Utility to merge classes
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(" ");
 }

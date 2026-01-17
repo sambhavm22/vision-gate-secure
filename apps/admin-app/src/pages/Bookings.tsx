@@ -2,6 +2,7 @@ import { supabase } from "@vision-gate/supabase/client";
 import {
     Badge,
     Button,
+    cn,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -29,15 +30,20 @@ import {
     Textarea,
     useToast
 } from "@vision-gate/ui";
-import { format } from "date-fns";
-import { MoreHorizontal, Search, UserRoundCheck } from "lucide-react";
+import { format, isBefore, parseISO, startOfDay, subDays } from "date-fns";
+import { AlertCircle, MoreHorizontal, Search, UserRoundCheck } from "lucide-react";
 import { useEffect, useState } from "react";
+
+type DateFilter = "today" | "7d" | "30d" | "all";
+type StatusFilter = "all" | "pending" | "assigned" | "completed" | "cancelled";
 
 export default function Bookings() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [workers, setWorkers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [dateFilter, setDateFilter] = useState<DateFilter>("7d");
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const { toast } = useToast();
 
     // Dialog states
@@ -70,12 +76,24 @@ export default function Bookings() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case "completed": return "bg-green-100 text-green-800 border-green-200";
+            case "completed": return "bg-emerald-100 text-emerald-800 border-emerald-200";
             case "cancelled": return "bg-red-100 text-red-800 border-red-200";
-            case "matched": return "bg-blue-100 text-blue-800 border-blue-200";
-            case "requested": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+            case "matched":
+            case "assigned":
+            case "accepted": return "bg-blue-100 text-blue-800 border-blue-200";
+            case "pending":
+            case "searching":
+            case "requested": return "bg-amber-100 text-amber-800 border-amber-200";
             default: return "bg-gray-100 text-gray-800 border-gray-200";
         }
+    };
+
+    const isUnassigned = (booking: any) => !booking.worker_id && !['completed', 'cancelled'].includes(booking.status);
+
+    const isLate = (booking: any) => {
+        if (!booking.scheduled_at) return false;
+        const scheduledTime = parseISO(booking.scheduled_at);
+        return isBefore(scheduledTime, new Date()) && !['completed', 'cancelled', 'in_progress'].includes(booking.status);
     };
 
     const handleStatusChange = async (id: string, newStatus: string, reason: string = "Admin manual update") => {
@@ -139,11 +157,37 @@ export default function Bookings() {
         }
     };
 
-    const filteredBookings = bookings.filter(b =>
-        b.customer?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        b.service?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        b.status.includes(search.toLowerCase())
-    );
+    // Apply filters
+    const filteredBookings = bookings.filter(b => {
+        // Search filter
+        const matchesSearch = b.customer?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+            b.service?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            b.status?.includes(search.toLowerCase());
+
+        // Date filter
+        let matchesDate = true;
+        if (dateFilter !== "all" && b.scheduled_at) {
+            const scheduledDate = parseISO(b.scheduled_at);
+            const today = startOfDay(new Date());
+            if (dateFilter === "today") matchesDate = scheduledDate >= today;
+            else if (dateFilter === "7d") matchesDate = scheduledDate >= subDays(today, 7);
+            else if (dateFilter === "30d") matchesDate = scheduledDate >= subDays(today, 30);
+        }
+
+        // Status filter
+        let matchesStatus = true;
+        if (statusFilter !== "all") {
+            if (statusFilter === "pending") matchesStatus = ['pending', 'searching', 'requested'].includes(b.status);
+            else if (statusFilter === "assigned") matchesStatus = ['assigned', 'matched', 'accepted', 'in_progress'].includes(b.status);
+            else matchesStatus = b.status === statusFilter;
+        }
+
+        return matchesSearch && matchesDate && matchesStatus;
+    });
+
+    // Count for quick stats
+    const unassignedCount = bookings.filter(isUnassigned).length;
+    const lateCount = bookings.filter(isLate).length;
 
     return (
         <div className="space-y-6">
@@ -157,7 +201,26 @@ export default function Bookings() {
                 </Button>
             </div>
 
-            <div className="flex items-center gap-4">
+            {/* Quick Alerts */}
+            {(unassignedCount > 0 || lateCount > 0) && (
+                <div className="flex flex-wrap gap-2">
+                    {unassignedCount > 0 && (
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1 cursor-pointer" onClick={() => setStatusFilter("pending")}>
+                            <AlertCircle className="h-3 w-3" />
+                            {unassignedCount} Unassigned
+                        </Badge>
+                    )}
+                    {lateCount > 0 && (
+                        <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {lateCount} Overdue
+                        </Badge>
+                    )}
+                </div>
+            )}
+
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-4">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -167,6 +230,29 @@ export default function Bookings() {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
+                <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+                    <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Date Range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="7d">Last 7 Days</SelectItem>
+                        <SelectItem value="30d">Last 30 Days</SelectItem>
+                        <SelectItem value="all">All Time</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+                    <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="assigned">Assigned</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="border rounded-xl bg-card overflow-hidden">
@@ -185,10 +271,19 @@ export default function Bookings() {
                     <TableBody>
                         {loading && bookings.length === 0 ? (
                             <TableRow><TableCell colSpan={7} className="text-center py-8">Loading bookings...</TableCell></TableRow>
+                        ) : filteredBookings.length === 0 ? (
+                            <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No bookings found matching your filters.</TableCell></TableRow>
                         ) : filteredBookings.map((booking) => (
-                            <TableRow key={booking.id}>
+                            <TableRow
+                                key={booking.id}
+                                className={cn(
+                                    isUnassigned(booking) && "bg-amber-50 dark:bg-amber-950/20",
+                                    isLate(booking) && "bg-red-50 dark:bg-red-950/20"
+                                )}
+                            >
                                 <TableCell className="font-medium">
                                     {format(new Date(booking.scheduled_at), "MMM d, HH:mm")}
+                                    {isLate(booking) && <span className="ml-1 text-xs text-red-500">(Late)</span>}
                                 </TableCell>
                                 <TableCell>
                                     <div className="font-semibold">{booking.customer?.full_name}</div>
@@ -196,7 +291,7 @@ export default function Bookings() {
                                 </TableCell>
                                 <TableCell>{booking.service?.name}</TableCell>
                                 <TableCell>
-                                    {booking.worker?.full_name || <span className="text-muted-foreground italic">Unassigned</span>}
+                                    {booking.worker?.full_name || <span className="text-amber-600 italic font-medium">Unassigned</span>}
                                 </TableCell>
                                 <TableCell>
                                     <Badge className={cn("capitalize border text-[10px]", getStatusColor(booking.status))}>
@@ -287,8 +382,4 @@ export default function Bookings() {
             </Dialog>
         </div>
     );
-}
-
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(" ");
 }
