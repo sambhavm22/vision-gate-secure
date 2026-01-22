@@ -1,6 +1,6 @@
 import { supabase } from "@vision-gate/supabase/client";
-import { format, isAfter, isBefore, parseISO, startOfDay, subDays } from "date-fns";
-import { useEffect, useState } from "react";
+import { format, parseISO, startOfDay, subDays } from "date-fns";
+import { useEffect, useRef, useState } from "react";
 
 export type DateRange = "today" | "7d" | "30d" | "all";
 
@@ -38,47 +38,97 @@ export interface DashboardStats {
 export function useDashboardData(range: DateRange) {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
+    // Simple in-memory cache
+    const cache = useRef<Record<string, DashboardStats>>({});
 
     useEffect(() => {
         async function fetchData() {
+            // Check cache first
+            if (cache.current[range]) {
+                setStats(cache.current[range]);
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             try {
-                // Calculate start date based on range
-                let startDate: Date | null = null;
                 const today = new Date();
+                let startDate: Date | null = null;
 
                 if (range === "today") startDate = startOfDay(today);
                 else if (range === "7d") startDate = subDays(today, 7);
                 else if (range === "30d") startDate = subDays(today, 30);
 
-                // Fetch raw data
-                const [bookingsResponse, workersResponse] = await Promise.all([
-                    supabase.from("bookings").select("*, profiles(full_name)").order("created_at", { ascending: false }),
-                    supabase.from("workers_public").select("*"),
+                // 1. Fetch Stats Data (Filtered by Date)
+                let query = supabase
+                    .from("bookings")
+                    .select("id, created_at, total_amount, status, services(name), addresses(city, postal_code), profiles(full_name)")
+                    .order("created_at", { ascending: false });
+
+                if (startDate) {
+                    query = query.gte("created_at", startDate.toISOString());
+                }
+
+                // 2. Fetch Active Workers Count (Optimized)
+                const workersQuery = supabase
+                    .from("workers_public")
+                    .select("*", { count: "exact", head: true })
+                    .eq("is_online", true);
+
+                // 3. Fetch Unassigned Bookings (Needs Attention - Global)
+                const unassignedQuery = supabase
+                    .from("bookings")
+                    .select("id, created_at, services(name), profiles(full_name)")
+                    .in("status", ["pending", "searching"])
+                    .is("worker_id", null)
+                    .order("created_at", { ascending: false })
+                    .limit(5);
+
+                // 4. Fetch Late Bookings (Needs Attention - Global)
+                const lateQuery = supabase
+                    .from("bookings")
+                    .select("id, created_at, services(name), scheduled_at")
+                    .lt("scheduled_at", today.toISOString())
+                    .not("status", "in", ["completed", "cancelled", "in_progress"])
+                    .order("scheduled_at", { ascending: true }) // Oldest first (most overdue)
+                    .limit(5);
+
+                // 5. Fetch Recent Activity (Global)
+                const recentQuery = supabase
+                    .from("bookings")
+                    .select("id, created_at, status, services(name), profiles(full_name)")
+                    .order("created_at", { ascending: false })
+                    .limit(10);
+
+                const [statsRes, workersRes, unassignedRes, lateRes, recentRes] = await Promise.all([
+                    query,
+                    workersQuery,
+                    unassignedQuery,
+                    lateQuery,
+                    recentQuery
                 ]);
 
-                if (bookingsResponse.error) throw bookingsResponse.error;
-                if (workersResponse.error) throw workersResponse.error;
+                if (statsRes.error) throw statsRes.error;
 
-                const allBookings = bookingsResponse.data || [];
-                const allWorkers = workersResponse.data || [];
+                const filteredBookings = statsRes.data || [];
+                const activeWorkersCount = workersRes.count || 0;
+                const unassignedList = unassignedRes.data || [];
+                const lateList = lateRes.data || [];
+                const recentList = recentRes.data || [];
 
-                // Filter data based on date range
-                const filteredBookings = startDate
-                    ? allBookings.filter(b => b.created_at && isAfter(parseISO(b.created_at), startDate))
-                    : allBookings;
+                // --- Calculate Derived Stats from filteredBookings ---
 
-                // 1. KPIs
+                // KPIs
                 const totalRevenue = filteredBookings.reduce((sum, b) => sum + (Number(b.total_amount) || 0), 0);
                 const totalBookings = filteredBookings.length;
-                const activeWorkers = allWorkers.filter(w => w.is_online).length;
-                const completedBookings = filteredBookings.filter(b => b.status === 'completed').length;
+                const completedBookings = filteredBookings.filter(b => b.status === "completed").length;
                 const completionRate = totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0;
+                // Pending jobs in the current view
                 const pendingJobs = filteredBookings.filter(b =>
-                    b.status === 'pending' || b.status === 'searching' || !b.worker_id
+                    b.status === "pending" || b.status === "searching" || !(b as any).worker_id
                 ).length;
 
-                // 2. Revenue Trend (Daily)
+                // Revenue Trend
                 const revenueMap = new Map<string, number>();
                 filteredBookings.forEach(b => {
                     if (!b.created_at) return;
@@ -90,23 +140,24 @@ export function useDashboardData(range: DateRange) {
                     .map(([date, amount]) => ({ date, amount }))
                     .sort((a, b) => a.date.localeCompare(b.date));
 
-                // 3. Booking Status Distribution
+                // Booking Status Distribution
                 const statusCounts = filteredBookings.reduce((acc, b) => {
-                    const status = b.status || 'unknown';
+                    const status = b.status || "unknown";
                     acc[status] = (acc[status] || 0) + 1;
                     return acc;
                 }, {} as Record<string, number>);
 
                 const bookingStatus = [
-                    { name: "Completed", value: statusCounts['completed'] || 0, color: "#10B981" },
-                    { name: "Pending", value: (statusCounts['pending'] || 0) + (statusCounts['searching'] || 0), color: "#F59E0B" },
-                    { name: "Cancelled", value: statusCounts['cancelled'] || 0, color: "#EF4444" },
-                    { name: "In Progress", value: (statusCounts['accepted'] || 0) + (statusCounts['assigned'] || 0) + (statusCounts['in_progress'] || 0), color: "#3B82F6" }
+                    { name: "Completed", value: statusCounts["completed"] || 0, color: "#10B981" },
+                    { name: "Pending", value: (statusCounts["pending"] || 0) + (statusCounts["searching"] || 0), color: "#F59E0B" },
+                    { name: "Cancelled", value: statusCounts["cancelled"] || 0, color: "#EF4444" },
+                    { name: "In Progress", value: (statusCounts["accepted"] || 0) + (statusCounts["assigned"] || 0) + (statusCounts["in_progress"] || 0), color: "#3B82F6" }
                 ].filter(item => item.value > 0);
 
-                // 4. Top Services
-                const serviceCounts = filteredBookings.reduce((acc, b) => {
-                    const service = b.service_name || "Unknown";
+                // Top Services
+                const serviceCounts = filteredBookings.reduce((acc, b: any) => {
+                    // Use nested service name
+                    const service = b.services?.name || "Unknown";
                     acc[service] = (acc[service] || 0) + 1;
                     return acc;
                 }, {} as Record<string, number>);
@@ -116,9 +167,10 @@ export function useDashboardData(range: DateRange) {
                     .sort((a, b) => b.value - a.value)
                     .slice(0, 5);
 
-                // 5. Area Distribution
-                const areaCounts = filteredBookings.reduce((acc, b) => {
-                    const area = b.city || b.postal_code || "Unknown";
+                // Area Distribution
+                const areaCounts = filteredBookings.reduce((acc, b: any) => {
+                    // Use nested address city/postal_code
+                    const area = b.addresses?.city || b.addresses?.postal_code || "Unknown";
                     acc[area] = (acc[area] || 0) + 1;
                     return acc;
                 }, {} as Record<string, number>);
@@ -128,61 +180,46 @@ export function useDashboardData(range: DateRange) {
                     .sort((a, b) => b.value - a.value)
                     .slice(0, 5);
 
-                // 6. Needs Attention
+                // Build Needs Attention List
                 const needsAttention: NeedsAttentionItem[] = [];
 
-                // Unassigned bookings
-                const unassignedBookings = allBookings.filter(b =>
-                    (b.status === 'pending' || b.status === 'searching') && !b.worker_id
-                ).slice(0, 5);
-
-                unassignedBookings.forEach(b => {
+                unassignedList.forEach((b: any) => {
                     needsAttention.push({
                         id: b.id,
                         type: "unassigned",
                         title: "Unassigned Booking",
-                        description: `${b.service_name} - ${(b.profiles as any)?.full_name || 'Customer'}`,
-                        createdAt: b.created_at || ''
+                        description: `${b.services?.name || "Service"} - ${(b.profiles as any)?.full_name || "Customer"}`,
+                        createdAt: b.created_at || ""
                     });
                 });
 
-                // Late bookings (scheduled time passed but not started)
-                const lateBookings = allBookings.filter(b => {
-                    if (!b.scheduled_at) return false;
-                    const scheduledTime = parseISO(b.scheduled_at);
-                    return isBefore(scheduledTime, today) &&
-                        !['completed', 'cancelled', 'in_progress'].includes(b.status || '');
-                }).slice(0, 5);
-
-                lateBookings.forEach(b => {
+                lateList.forEach((b: any) => {
                     needsAttention.push({
                         id: b.id,
                         type: "late",
                         title: "Overdue Job",
-                        description: `${b.service_name} was scheduled for ${b.scheduled_at ? format(parseISO(b.scheduled_at), "MMM d") : 'unknown'}`,
-                        createdAt: b.created_at || ''
+                        description: `${b.services?.name || "Job"} scheduled for ${b.scheduled_at ? format(parseISO(b.scheduled_at), "MMM d") : "unknown"}`,
+                        createdAt: b.created_at || ""
                     });
                 });
 
-                // 7. Recent Activity
-                const recentActivity: RecentActivityItem[] = [];
-
-                // Last 10 bookings
-                allBookings.slice(0, 10).forEach(b => {
-                    recentActivity.push({
+                // Recent Activity
+                let recentActivityItems: RecentActivityItem[] = [];
+                recentList.forEach((b: any) => {
+                    recentActivityItems.push({
                         id: b.id,
-                        type: b.status === 'cancelled' ? 'cancellation' : b.status === 'completed' ? 'completion' : 'booking',
-                        customerName: (b.profiles as any)?.full_name || 'Unknown',
-                        serviceName: b.service_name || 'Unknown',
-                        createdAt: b.created_at || '',
-                        status: b.status || 'unknown'
+                        type: b.status === "cancelled" ? "cancellation" : b.status === "completed" ? "completion" : "booking",
+                        customerName: (b.profiles as any)?.full_name || "Unknown",
+                        serviceName: b.services?.name || "Unknown",
+                        createdAt: b.created_at || "",
+                        status: b.status || "unknown"
                     });
                 });
 
-                setStats({
+                const newStats = {
                     totalRevenue,
                     totalBookings,
-                    activeWorkers,
+                    activeWorkers: activeWorkersCount,
                     completionRate,
                     pendingJobs,
                     revenueTrend,
@@ -190,8 +227,12 @@ export function useDashboardData(range: DateRange) {
                     topServices,
                     areaDistribution,
                     needsAttention,
-                    recentActivity
-                });
+                    recentActivity: recentActivityItems
+                };
+
+                // Update cache
+                cache.current[range] = newStats;
+                setStats(newStats);
 
             } catch (error) {
                 console.error("Failed to fetch dashboard stats:", error);

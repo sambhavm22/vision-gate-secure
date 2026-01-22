@@ -1,38 +1,44 @@
 import { Toaster } from "@vision-gate/ui";
+import { Suspense, lazy } from "react";
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import AdminLayout from "./components/AdminLayout";
+import { PageLoader } from "./components/PageLoader";
 import ProtectedRoute from "./components/ProtectedRoute";
-import AuditLogs from "./pages/AuditLogs";
-import Bookings from "./pages/Bookings";
-import Dashboard from "./pages/Dashboard";
-import Issues from "./pages/Issues";
-import Login from "./pages/Login";
-import Payments from "./pages/Payments";
-import Reports from "./pages/Reports";
-import Users from "./pages/Users";
-import Workers from "./pages/Workers";
+
+// Lazy loaded components
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Bookings = lazy(() => import("./pages/Bookings"));
+const Workers = lazy(() => import("./pages/Workers"));
+const Users = lazy(() => import("./pages/Users"));
+const Payments = lazy(() => import("./pages/Payments"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Issues = lazy(() => import("./pages/Issues"));
+const AuditLogs = lazy(() => import("./pages/AuditLogs"));
+const Login = lazy(() => import("./pages/Login"));
 
 function App() {
     return (
         <Router>
-            <Routes>
-                <Route path="/login" element={<Login />} />
+            <Suspense fallback={<PageLoader />}>
+                <Routes>
+                    <Route path="/login" element={<Login />} />
 
-                {/* Protected Admin Routes */}
-                <Route element={<ProtectedRoute />}>
-                    <Route element={<AdminLayout />}>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/bookings" element={<Bookings />} />
-                        <Route path="/workers" element={<Workers />} />
-                        <Route path="/users" element={<Users />} />
-                        <Route path="/payments" element={<Payments />} />
-                        <Route path="/reports" element={<Reports />} />
-                        <Route path="/issues" element={<Issues />} />
-                        <Route path="/audit-logs" element={<AuditLogs />} />
-                        <Route path="/settings" element={<div className="text-muted-foreground">Settings coming soon...</div>} />
+                    {/* Protected Admin Routes */}
+                    <Route element={<ProtectedRoute />}>
+                        <Route element={<AdminLayout />}>
+                            <Route path="/" element={<Dashboard />} />
+                            <Route path="/bookings" element={<Bookings />} />
+                            <Route path="/workers" element={<Workers />} />
+                            <Route path="/users" element={<Users />} />
+                            <Route path="/payments" element={<Payments />} />
+                            <Route path="/reports" element={<Reports />} />
+                            <Route path="/issues" element={<Issues />} />
+                            <Route path="/audit-logs" element={<AuditLogs />} />
+                            <Route path="/settings" element={<div className="text-muted-foreground">Settings coming soon...</div>} />
+                        </Route>
                     </Route>
-                </Route>
-            </Routes>
+                </Routes>
+            </Suspense>
             <Toaster />
         </Router>
     );

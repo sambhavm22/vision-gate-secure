@@ -2,6 +2,7 @@ import logo from "@/assets/helperhub-logo.png";
 import { AddressSelectionDialog } from "@/components/AddressSelectionDialog";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { NotificationsDialog } from "@/components/NotificationsDialog";
+import { logger } from "@/lib/logger";
 import { supabase } from "@vision-gate/supabase/client";
 import { Database } from "@vision-gate/supabase/types";
 import { Badge, Button, Calendar as CalendarComponent, Card, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger, useDeviceToken, useIsMobile, useNotifications, useToast } from "@vision-gate/ui";
@@ -31,6 +32,7 @@ const Dashboard = () => {
   const [showServiceSelector, setShowServiceSelector] = useState(false);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [userLocation, setUserLocation] = useState(() => localStorage.getItem("userLocation") || "Mumbai, India");
+  const [userCoordinates, setUserCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [manualLocationInput, setManualLocationInput] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [showCustomDuration, setShowCustomDuration] = useState(false);
@@ -234,7 +236,7 @@ const Dashboard = () => {
 
         // Storing location in notes for text address, and `location` column for spatial queries
         notes: `Location: ${bookingLocation}`,
-        location: `POINT(${userLng} ${userLat})`,
+        location: `POINT(${userCoordinates?.lng || userLng} ${userCoordinates?.lat || userLat})`,
         total_amount: 0, // Pending calculation
         status: 'requested',
       } as any);
@@ -249,8 +251,8 @@ const Dashboard = () => {
       setBookingDate("");
       setBookingTime("");
       setBookingLocation("");
-    } catch (error) {
-      console.error("Error creating booking:", error);
+    } catch (error: any) {
+      logger.error("Error creating booking", { error: error.message });
       toast({
         title: "Booking Failed",
         description: "Failed to create booking. Please try again.",
@@ -600,6 +602,7 @@ const Dashboard = () => {
                     async (position) => {
                       const lat = position.coords.latitude;
                       const lng = position.coords.longitude;
+                      setUserCoordinates({ lat, lng });
 
                       // Immediate feedback with coords
                       setUserLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);

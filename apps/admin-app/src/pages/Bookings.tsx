@@ -31,7 +31,7 @@ import {
     useToast
 } from "@vision-gate/ui";
 import { format, isBefore, parseISO, startOfDay, subDays } from "date-fns";
-import { AlertCircle, MoreHorizontal, Search, UserRoundCheck } from "lucide-react";
+import { AlertCircle, MoreHorizontal, Search, UserPlus, UserRoundCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type DateFilter = "today" | "7d" | "30d" | "all";
@@ -62,7 +62,7 @@ export default function Bookings() {
         worker:worker_id(full_name),
         service:service_id(name)
       `).order("scheduled_at", { ascending: false }),
-            supabase.from("workers_public").select("id, full_name, is_online")
+            supabase.from("workers_public").select("id, full_name, is_online, service_types")
         ]);
 
         if (!bookingsRes.error) setBookings(bookingsRes.data);
@@ -144,14 +144,14 @@ export default function Bookings() {
         if (!error) {
             await supabase.from("admin_audit_logs").insert({
                 admin_id: session.user.id,
-                action: "worker_reassign",
+                action: reassignBooking.worker_id ? "worker_reassign" : "worker_assign",
                 entity_type: "booking",
                 entity_id: reassignBooking.id,
                 old_data: { worker_id: reassignBooking.worker_id },
                 new_data: { worker_id: selectedWorkerId },
-                reason: "Admin reassignment"
+                reason: "Admin manual assignment"
             });
-            toast({ title: "Worker Reassigned", description: "Worker has been manually updated." });
+            toast({ title: "Worker Assigned", description: "Worker has been manually updated." });
             setReassignBooking(null);
             fetchData();
         }
@@ -188,6 +188,15 @@ export default function Bookings() {
     // Count for quick stats
     const unassignedCount = bookings.filter(isUnassigned).length;
     const lateCount = bookings.filter(isLate).length;
+
+    // Filter eligible workers based on service skill
+    const eligibleWorkers = reassignBooking
+        ? workers.filter(w =>
+            // Include worker if they have the skill OR if it's the already assigned worker
+            (w.service_types && w.service_types.includes(reassignBooking.service.name)) ||
+            w.id === reassignBooking.worker_id
+        ).sort((a, b) => (b.is_online === a.is_online) ? 0 : b.is_online ? 1 : -1)
+        : [];
 
     return (
         <div className="space-y-6">
@@ -308,8 +317,19 @@ export default function Bookings() {
                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                             <DropdownMenuItem onClick={() => handleStatusChange(booking.id, "matched")}>Mark Matched</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleStatusChange(booking.id, "completed")}>Mark Completed</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setReassignBooking(booking)}>
-                                                <UserRoundCheck className="h-4 w-4 mr-2" /> Reassign Worker
+                                            <DropdownMenuItem onClick={() => {
+                                                setReassignBooking(booking);
+                                                setSelectedWorkerId(booking.worker_id || "");
+                                            }}>
+                                                {booking.worker_id ? (
+                                                    <>
+                                                        <UserRoundCheck className="h-4 w-4 mr-2" /> Reassign Worker
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <UserPlus className="h-4 w-4 mr-2" /> Assign Worker
+                                                    </>
+                                                )}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem className="text-destructive font-bold" onClick={() => setCancelBookingId(booking.id)}>
@@ -348,13 +368,13 @@ export default function Bookings() {
                 </DialogContent>
             </Dialog>
 
-            {/* Reassign Dialog */}
+            {/* Assign/Reassign Dialog */}
             <Dialog open={!!reassignBooking} onOpenChange={(open) => !open && setReassignBooking(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Reassign Worker</DialogTitle>
+                        <DialogTitle>{reassignBooking?.worker_id ? "Reassign Worker" : "Assign Worker"}</DialogTitle>
                         <DialogDescription>
-                            Manually assign a different worker to this booking.
+                            Select a qualified worker for <strong>{reassignBooking?.service?.name}</strong>.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
@@ -365,18 +385,27 @@ export default function Bookings() {
                                     <SelectValue placeholder="Select a worker" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {workers.map(w => (
-                                        <SelectItem key={w.id} value={w.id}>
-                                            {w.full_name} {!w.is_online && "(Offline)"}
-                                        </SelectItem>
-                                    ))}
+                                    {eligibleWorkers.length === 0 ? (
+                                        <div className="p-2 text-sm text-muted-foreground text-center">No workers with matching skill</div>
+                                    ) : (
+                                        eligibleWorkers.map(w => (
+                                            <SelectItem key={w.id} value={w.id}>
+                                                <div className="flex items-center w-full justify-between gap-4">
+                                                    <span>{w.full_name}</span>
+                                                    {!w.is_online && <span className="text-xs text-muted-foreground">(Offline)</span>}
+                                                </div>
+                                            </SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setReassignBooking(null)}>Cancel</Button>
-                        <Button disabled={!selectedWorkerId} onClick={handleReassign}>Reassign</Button>
+                        <Button disabled={!selectedWorkerId} onClick={handleReassign}>
+                            {reassignBooking?.worker_id ? "Reassign" : "Assign"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
