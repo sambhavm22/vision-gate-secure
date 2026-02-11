@@ -62,9 +62,13 @@ export function HomeScreen(): React.JSX.Element {
     const displayName = getUserDisplayName(user);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+
+
+
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedService, setSelectedService] = useState<typeof SERVICES[0] | null>(null);
     const [durationModalVisible, setDurationModalVisible] = useState(false);
+
 
     const DURATION_OPTIONS = [
         { id: '1', label: '1 hr', price: 200, originalPrice: 320, discount: '38% OFF' },
@@ -73,6 +77,8 @@ export function HomeScreen(): React.JSX.Element {
         { id: '4', label: '3 hrs', price: 600, originalPrice: 960, discount: '38% OFF' },
     ];
 
+
+
     const handleServicePress = (service: typeof SERVICES[0]) => {
         setSelectedService(service);
         setModalVisible(true);
@@ -80,8 +86,16 @@ export function HomeScreen(): React.JSX.Element {
 
     const handleBooking = (type: 'now' | 'prebook') => {
         setModalVisible(false);
-        // Open duration modal for both flows to ensure price/duration is selected
-        setTimeout(() => setDurationModalVisible(true), 300); // Small delay for nice transition
+        if (type === 'now') {
+            setTimeout(() => setDurationModalVisible(true), 300);
+        } else {
+            if (selectedService) {
+                navigation.navigate('Schedule', {
+                    serviceId: selectedService.id,
+                    serviceName: selectedService.name
+                });
+            }
+        }
     };
 
     const handleDurationConfirm = (durationOption: typeof DURATION_OPTIONS[0]) => {
@@ -90,12 +104,14 @@ export function HomeScreen(): React.JSX.Element {
             navigation.navigate('Booking', {
                 serviceId: selectedService.id,
                 serviceName: selectedService.name,
-                bookingType: 'now', // Defaulting to 'now' logic or passing type if preserved in state
+                bookingType: 'now',
                 duration: parseFloat(durationOption.label),
                 price: durationOption.price
             });
         }
     };
+
+
 
     const guidelines = selectedService ? SERVICE_GUIDELINES[selectedService.name] : null;
 
@@ -244,7 +260,7 @@ export function HomeScreen(): React.JSX.Element {
                 </View>
             </Modal>
 
-            {/* Duration Selection Modal */}
+            {/* Duration Selection Modal (Book Now) */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -253,7 +269,6 @@ export function HomeScreen(): React.JSX.Element {
             >
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: '#0f172a', maxHeight: '90%' }]}>
-                        {/* Header */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                             <View>
                                 <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>
@@ -269,7 +284,6 @@ export function HomeScreen(): React.JSX.Element {
                             <Text style={{ color: '#db2777', fontWeight: 'bold', fontSize: 12 }}>Arriving in 15 Min</Text>
                         </View>
 
-                        {/* Options Grid */}
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
                             {DURATION_OPTIONS.map((option) => (
                                 <View key={option.id} style={{ width: '48%', backgroundColor: 'white', borderRadius: 16, padding: 12, alignItems: 'center', marginBottom: 12 }}>
@@ -297,6 +311,9 @@ export function HomeScreen(): React.JSX.Element {
                     </View>
                 </View>
             </Modal>
+
+            {/* Schedule Service Modal (Pre-book) */}
+
         </SafeAreaView>
     );
 }

@@ -17,7 +17,8 @@ import {
     MyBookingsScreen,
     OTPScreen,
     ProfileScreen,
-    SupportScreen
+    ScheduleScreen,
+    SupportScreen,
 } from './screens';
 
 // Navigation type definitions
@@ -31,6 +32,12 @@ export type RootStackParamList = {
         bookingType: 'now' | 'prebook';
         duration?: number;
         price?: number;
+        date?: string;
+        time?: string;
+    };
+    Schedule: {
+        serviceId: string;
+        serviceName: string;
     };
 };
 
@@ -118,6 +125,11 @@ function App(): React.JSX.Element {
                             name="Booking"
                             component={BookingScreen}
                             options={{ headerShown: true, title: 'Book Service', headerBackTitle: 'Back' }}
+                        />
+                        <Stack.Screen
+                            name="Schedule"
+                            component={ScheduleScreen}
+                            options={{ headerShown: false }}
                         />
                     </>
                 ) : (

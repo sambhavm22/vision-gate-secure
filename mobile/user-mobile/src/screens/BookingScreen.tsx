@@ -1,38 +1,205 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
-import { SafeAreaView, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useColorScheme
+} from 'react-native';
 import { RootStackParamList } from '../App';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Booking'>;
 
-export function BookingScreen({ route }: Props): React.JSX.Element {
+export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
     const isDarkMode = useColorScheme() === 'dark';
-    const { serviceId, serviceName, bookingType } = route.params;
+    const { serviceId, serviceName, bookingType, duration, price, date, time } = route.params;
+
+    const [address, setAddress] = useState({
+        fullAddress: '',
+        city: '',
+        zip: '',
+        label: 'Home' as 'Home' | 'Work' | 'Other'
+    });
+
+    const [loading, setLoading] = useState(false);
+    const [fetchingLocation, setFetchingLocation] = useState(false);
+
+    const handleUseCurrentLocation = () => {
+        setFetchingLocation(true);
+        // Simulate fetching location
+        setTimeout(() => {
+            setFetchingLocation(false);
+            setAddress({
+                ...address,
+                fullAddress: '123, Tech Park Road, Sector 5',
+                city: 'Bangalore',
+                zip: '560103'
+            });
+            Alert.alert('Location Fetched', 'Address filled from current location.');
+        }, 1500);
+    };
+
+    const handleProceedToPayment = () => {
+        if (!address.fullAddress || !address.city || !address.zip) {
+            Alert.alert('Missing Address', 'Please provide a valid address, city, and pincode.');
+            return;
+        }
+
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+            Alert.alert(
+                'Payment Gateway',
+                `Redirecting to payment for ₹${price || 400}...\n\n(Mock Payment Processing)`,
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            navigation.popToTop();
+                            Alert.alert('Booking Confirmed!', 'Your service has been scheduled.');
+                        }
+                    }
+                ]
+            );
+        }, 1500);
+    };
 
     return (
         <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
-            <View style={styles.content}>
-                <Text style={[styles.title, isDarkMode && styles.darkText]}>
-                    {bookingType === 'prebook' ? 'Pre-booking' : 'Booking'}
-                </Text>
-                <Text style={[styles.subtitle, isDarkMode && styles.darkTextMuted]}>
-                    {serviceName}
-                </Text>
-
-                <View style={[styles.card, isDarkMode && styles.darkCard]}>
-                    <Text style={[styles.infoText, isDarkMode && styles.darkText]}>
-                        Service ID: {serviceId}
-                    </Text>
-                    <Text style={[styles.infoText, isDarkMode && styles.darkText]}>
-                        Type: {bookingType === 'now' ? 'Immediate' : 'Scheduled'}
-                    </Text>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <View style={styles.header}>
+                    {/* Search Bar */}
+                    <View style={[styles.searchBar, isDarkMode && styles.darkSearchBar]}>
+                        <Text style={styles.searchIcon}>🔍</Text>
+                        <TextInput
+                            style={[styles.searchInput, isDarkMode && styles.darkText]}
+                            placeholder="Search for an address..."
+                            placeholderTextColor="#9ca3af"
+                        />
+                    </View>
                 </View>
 
-                {/* Placeholder for actual booking form */}
-                <Text style={[styles.placeholder, isDarkMode && styles.darkTextMuted]}>
-                    Booking form implementation coming soon...
-                </Text>
-            </View>
+                {/* Map Placeholder */}
+                <View style={[styles.mapPlaceholder, isDarkMode && styles.darkMapPlaceholder]}>
+                    <Text style={{ fontSize: 40 }}>🗺️</Text>
+                    <Text style={{ color: isDarkMode ? '#cbd5e1' : '#64748b' }}>Map View</Text>
+                </View>
+
+                {/* Use Current Location Button */}
+                <TouchableOpacity
+                    style={[styles.useLocationBtn, isDarkMode && styles.darkUseLocationBtn]}
+                    onPress={handleUseCurrentLocation}
+                    disabled={fetchingLocation}
+                >
+                    {fetchingLocation ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                        <>
+                            <Text style={{ marginRight: 8, fontSize: 16 }}>📍</Text>
+                            <Text style={styles.useLocationText}>Use Current Location</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+
+                <ScrollView contentContainerStyle={styles.content}>
+
+                    {/* Label Selection */}
+                    <Text style={[styles.labelTitle, isDarkMode && styles.darkText]}>Label</Text>
+                    <View style={styles.labelRow}>
+                        {['Home', 'Work', 'Other'].map((label) => (
+                            <TouchableOpacity
+                                key={label}
+                                style={[
+                                    styles.labelChip,
+                                    address.label === label && styles.activeLabelChip
+                                ]}
+                                onPress={() => setAddress({ ...address, label: label as any })}
+                            >
+                                <Text style={[
+                                    styles.labelText,
+                                    address.label === label && styles.activeLabelText
+                                ]}>{label}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {/* Form Fields */}
+                    <View style={styles.formGroup}>
+                        <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>Address Line</Text>
+                        <TextInput
+                            style={[styles.input, isDarkMode && styles.darkInput, isDarkMode && styles.darkText]}
+                            placeholder="House/Flat No, Street, Area"
+                            placeholderTextColor="#64748b"
+                            value={address.fullAddress}
+                            onChangeText={(text) => setAddress({ ...address, fullAddress: text })}
+                        />
+                    </View>
+
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <View style={[styles.formGroup, { flex: 1 }]}>
+                            <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>City</Text>
+                            <TextInput
+                                style={[styles.input, isDarkMode && styles.darkInput, isDarkMode && styles.darkText]}
+                                placeholder="City"
+                                placeholderTextColor="#64748b"
+                                value={address.city}
+                                onChangeText={(text) => setAddress({ ...address, city: text })}
+                            />
+                        </View>
+                        <View style={[styles.formGroup, { flex: 1 }]}>
+                            <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>Pincode</Text>
+                            <TextInput
+                                style={[styles.input, isDarkMode && styles.darkInput, isDarkMode && styles.darkText]}
+                                placeholder="Pincode"
+                                keyboardType="number-pad"
+                                placeholderTextColor="#64748b"
+                                value={address.zip}
+                                onChangeText={(text) => setAddress({ ...address, zip: text })}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Booking Review (Small) */}
+                    <View style={[styles.reviewContainer, isDarkMode && styles.darkReviewContainer]}>
+                        <Text style={[styles.reviewText, isDarkMode && styles.darkText]}>
+                            Booking: {serviceName} • ₹{price || 400}
+                        </Text>
+                    </View>
+
+                </ScrollView>
+
+                {/* Footer Action */}
+                <View style={[styles.footer, isDarkMode && styles.darkFooter]}>
+                    <TouchableOpacity
+                        style={styles.cancelButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={[styles.cancelButtonText, isDarkMode && styles.darkText]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.saveButton, loading && styles.disabledButton]}
+                        onPress={handleProceedToPayment}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text style={styles.saveButtonText}>Save & Select</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -40,24 +207,130 @@ export function BookingScreen({ route }: Props): React.JSX.Element {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#f8fafc', // Light bg
     },
     darkContainer: {
-        backgroundColor: '#0f172a',
+        backgroundColor: '#0f172a', // Dark bg #0f172a or #111827
+    },
+    header: {
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 8,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e2e8f0',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        height: 48,
+        borderWidth: 1,
+        borderColor: '#cbd5e1',
+    },
+    darkSearchBar: {
+        backgroundColor: '#1e293b',
+        borderColor: '#334155',
+    },
+    searchIcon: {
+        fontSize: 18,
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#0f172a',
+    },
+    mapPlaceholder: {
+        height: 200,
+        backgroundColor: '#cbd5e1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        overflow: 'hidden',
+    },
+    darkMapPlaceholder: {
+        backgroundColor: '#334155',
+        // In a real app, this would be the MapView
+    },
+    useLocationBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1e293b', // Dark button as per image
+        marginHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 8,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    darkUseLocationBtn: {
+        backgroundColor: '#1e293b',
+        borderColor: '#475569',
+    },
+    useLocationText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     content: {
-        padding: 24,
+        paddingHorizontal: 16,
+        paddingBottom: 100,
     },
-    title: {
-        fontSize: 32,
+    labelTitle: {
+        fontSize: 16,
         fontWeight: 'bold',
+        marginBottom: 12,
         color: '#0f172a',
+    },
+    labelRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 24,
+    },
+    labelChip: {
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#64748b',
+    },
+    activeLabelChip: {
+        backgroundColor: '#10b981', // Green active
+        borderColor: '#10b981',
+    },
+    labelText: {
+        color: '#64748b',
+        fontWeight: '600',
+    },
+    activeLabelText: {
+        color: 'white',
+    },
+    formGroup: {
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#334155',
         marginBottom: 8,
     },
-    subtitle: {
-        fontSize: 20,
-        color: '#64748b',
-        marginBottom: 32,
+    input: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#94a3b8',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: '#0f172a',
+    },
+    darkInput: {
+        borderColor: '#475569',
+        color: '#f8fafc',
     },
     darkText: {
         color: '#f8fafc',
@@ -65,24 +338,58 @@ const styles = StyleSheet.create({
     darkTextMuted: {
         color: '#94a3b8',
     },
-    card: {
-        padding: 16,
-        backgroundColor: '#f1f5f9',
-        borderRadius: 12,
-        marginBottom: 24,
+    reviewContainer: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#e2e8f0',
+        borderRadius: 8,
     },
-    darkCard: {
+    darkReviewContainer: {
         backgroundColor: '#1e293b',
     },
-    infoText: {
-        fontSize: 16,
-        marginBottom: 8,
-        color: '#334155',
-    },
-    placeholder: {
+    reviewText: {
+        fontSize: 12,
+        color: '#475569',
         textAlign: 'center',
-        marginTop: 40,
-        fontStyle: 'italic',
-        color: '#94a3b8',
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#f8fafc',
+        padding: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTotalColor: '#e2e8f0',
+    },
+    darkFooter: {
+        backgroundColor: '#0f172a',
+        borderTopColor: '#1e293b',
+    },
+    cancelButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#0f172a',
+    },
+    saveButton: {
+        backgroundColor: '#10b981', // Green
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        borderRadius: 8,
+    },
+    disabledButton: {
+        opacity: 0.7,
+    },
+    saveButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
