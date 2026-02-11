@@ -3,39 +3,104 @@
  * Main app with navigation
  */
 
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
-import { StatusBar, useColorScheme } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, StatusBar, Text, useColorScheme, View } from 'react-native';
 
-import { HomeScreen, LoginScreen, OTPScreen } from './screens';
+import { useUser } from './hooks/useUser';
+import {
+    BookingScreen,
+    HomeScreen,
+    LoginScreen,
+    MyBookingsScreen,
+    OTPScreen,
+    ProfileScreen,
+    SupportScreen
+} from './screens';
 
 // Navigation type definitions
 export type RootStackParamList = {
     Login: undefined;
     OTP: { contact: string; method: 'phone' | 'email' };
+    MainTabs: undefined;
+    Booking: {
+        serviceId: string;
+        serviceName: string;
+        bookingType: 'now' | 'prebook';
+        duration?: number;
+        price?: number;
+    };
+};
+
+export type MainTabParamList = {
     Home: undefined;
+    MyBookings: undefined;
+    Support: undefined;
+    Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
+
+function MainTabs() {
+    const isDarkMode = useColorScheme() === 'dark';
+
+    return (
+        <Tab.Navigator
+            screenOptions={{
+                headerShown: false,
+                tabBarStyle: {
+                    backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                    borderTopColor: isDarkMode ? '#334155' : '#e2e8f0',
+                },
+                tabBarActiveTintColor: '#10b981',
+                tabBarInactiveTintColor: '#94a3b8',
+            }}
+        >
+            <Tab.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ tabBarIcon: ({ color }) => <Text style={{ color }}>🏠</Text> }}
+            />
+            <Tab.Screen
+                name="MyBookings"
+                component={MyBookingsScreen}
+                options={{
+                    title: 'Bookings',
+                    tabBarIcon: ({ color }) => <Text style={{ color }}>📅</Text>
+                }}
+            />
+            <Tab.Screen
+                name="Support"
+                component={SupportScreen}
+                options={{ tabBarIcon: ({ color }) => <Text style={{ color }}>💬</Text> }}
+            />
+            <Tab.Screen
+                name="Profile"
+                component={ProfileScreen}
+                options={{ tabBarIcon: ({ color }) => <Text style={{ color }}>👤</Text> }}
+            />
+        </Tab.Navigator>
+    );
+}
 
 function App(): React.JSX.Element {
     const isDarkMode = useColorScheme() === 'dark';
-
-    // MOCK: Local auth state
-    // TODO: Replace with real Supabase auth state
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { session, loading } = useUser();
 
     const handleAuthSuccess = () => {
-        // MOCK: Set authenticated state
-        setIsAuthenticated(true);
+        // Session change handles navigation
     };
 
-    const handleLogout = () => {
-        // MOCK: Clear authenticated state
-        // TODO: Replace with real Supabase signOut
-        setIsAuthenticated(false);
-    };
+    if (loading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDarkMode ? '#0f172a' : '#fff' }}>
+                <ActivityIndicator size="large" color="#10b981" />
+            </View>
+        );
+    }
 
     return (
         <NavigationContainer>
@@ -46,13 +111,16 @@ function App(): React.JSX.Element {
                     animation: 'slide_from_right',
                 }}
             >
-                {isAuthenticated ? (
-                    // Authenticated screens
-                    <Stack.Screen name="Home">
-                        {props => <HomeScreen {...props} onLogout={handleLogout} />}
-                    </Stack.Screen>
+                {session ? (
+                    <>
+                        <Stack.Screen name="MainTabs" component={MainTabs} />
+                        <Stack.Screen
+                            name="Booking"
+                            component={BookingScreen}
+                            options={{ headerShown: true, title: 'Book Service', headerBackTitle: 'Back' }}
+                        />
+                    </>
                 ) : (
-                    // Auth screens
                     <>
                         <Stack.Screen name="Login" component={LoginScreen} />
                         <Stack.Screen name="OTP">

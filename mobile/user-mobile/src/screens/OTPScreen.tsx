@@ -1,7 +1,6 @@
 /**
  * OTP Verification Screen
  * 6-digit OTP input with verification
- * MOCKED: Accepts 123456 as valid OTP
  */
 
 import type { RouteProp } from '@react-navigation/native';
@@ -15,8 +14,8 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    useColorScheme,
 } from 'react-native';
+import { supabase } from '../services/supabase';
 
 type OTPScreenProps = {
     navigation: NativeStackNavigationProp<any>;
@@ -25,12 +24,9 @@ type OTPScreenProps = {
 };
 
 const OTP_LENGTH = 6;
-// MOCK: This is the valid OTP for testing
-const MOCK_VALID_OTP = '123456';
 const RESEND_COOLDOWN = 30;
 
 export function OTPScreen({ navigation, route, onAuthSuccess }: OTPScreenProps): React.JSX.Element {
-    const isDarkMode = useColorScheme() === 'dark';
     const { contact, method } = route.params;
 
     const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -80,36 +76,57 @@ export function OTPScreen({ navigation, route, onAuthSuccess }: OTPScreenProps):
         setLoading(true);
         setError('');
 
-        // MOCK: Simulate API verification delay
-        // TODO: Replace with real Supabase OTP verification
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            const verifyParams = method === 'phone'
+                ? { phone: contact, token: otpString, type: 'sms' as const }
+                : { email: contact, token: otpString, type: 'email' as const };
 
-        setLoading(false);
+            const { data, error: verifyError } = await supabase.auth.verifyOtp(verifyParams);
 
-        // MOCK: Check against dummy OTP
-        if (otpString === MOCK_VALID_OTP) {
-            setSuccess(true);
-            // Wait a moment to show success state
-            setTimeout(() => {
-                onAuthSuccess();
-            }, 500);
-        } else {
-            setError(`Invalid OTP. Hint: Try ${MOCK_VALID_OTP}`);
+            if (verifyError) throw verifyError;
+
+            if (data.session) {
+                setSuccess(true);
+                // Wait a moment to show success state
+                setTimeout(() => {
+                    onAuthSuccess();
+                }, 500);
+            } else {
+                setError('Verification failed. Please try again.');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Invalid OTP');
             // Clear OTP on error
             setOtp(Array(OTP_LENGTH).fill(''));
             inputRefs.current[0]?.focus();
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleResendOTP = async () => {
         if (resendCooldown > 0) return;
 
-        // MOCK: Simulate resend delay
-        // TODO: Replace with real Supabase resend call
-        setResendCooldown(RESEND_COOLDOWN);
+        setLoading(true);
         setError('');
-        setOtp(Array(OTP_LENGTH).fill(''));
-        inputRefs.current[0]?.focus();
+
+        try {
+            const { error: resendError } = await supabase.auth.signInWithOtp(
+                method === 'phone'
+                    ? { phone: contact }
+                    : { email: contact }
+            );
+
+            if (resendError) throw resendError;
+
+            setResendCooldown(RESEND_COOLDOWN);
+            setOtp(Array(OTP_LENGTH).fill(''));
+            inputRefs.current[0]?.focus();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to resend OTP');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const maskedContact = method === 'phone'
@@ -117,23 +134,23 @@ export function OTPScreen({ navigation, route, onAuthSuccess }: OTPScreenProps):
         : contact.replace(/(.{2})(.*)(@.*)/, '$1***$3');
 
     return (
-        <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
+        <SafeAreaView style={styles.container}>
             <View style={styles.content}>
                 {/* Back Button */}
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={[styles.backButtonText, isDarkMode && styles.darkText]}>
+                    <Text style={styles.backButtonText}>
                         ← Back
                     </Text>
                 </TouchableOpacity>
 
                 {/* Header */}
-                <Text style={[styles.title, isDarkMode && styles.darkText]}>
+                <Text style={styles.title}>
                     Verify OTP
                 </Text>
-                <Text style={[styles.subtitle, isDarkMode && styles.darkTextMuted]}>
+                <Text style={styles.subtitle}>
                     Enter the 6-digit code sent to{'\n'}
                     <Text style={styles.contactText}>{maskedContact}</Text>
                 </Text>
@@ -146,15 +163,16 @@ export function OTPScreen({ navigation, route, onAuthSuccess }: OTPScreenProps):
                             ref={ref => { inputRefs.current[index] = ref; }}
                             style={[
                                 styles.otpInput,
-                                isDarkMode && styles.darkOtpInput,
-                                digit && styles.otpInputFilled,
-                                error && styles.otpInputError,
-                                success && styles.otpInputSuccess,
+                                digit ? styles.otpInputFilled : null,
+                                error ? styles.otpInputError : null,
+                                success ? styles.otpInputSuccess : null,
                             ]}
                             value={digit}
                             onChangeText={value => handleOtpChange(value, index)}
                             onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
                             keyboardType="number-pad"
+                            placeholderTextColor="#64748b"
+                            cursorColor="#10b981"
                             maxLength={1}
                             selectTextOnFocus
                             autoFocus={index === 0}
@@ -193,7 +211,7 @@ export function OTPScreen({ navigation, route, onAuthSuccess }: OTPScreenProps):
 
                 {/* Resend OTP */}
                 <View style={styles.resendContainer}>
-                    <Text style={[styles.resendText, isDarkMode && styles.darkTextMuted]}>
+                    <Text style={styles.resendText}>
                         Didn't receive the code?{' '}
                     </Text>
                     <TouchableOpacity
@@ -209,10 +227,6 @@ export function OTPScreen({ navigation, route, onAuthSuccess }: OTPScreenProps):
                     </TouchableOpacity>
                 </View>
 
-                {/* Mock Notice */}
-                <Text style={[styles.mockNotice, isDarkMode && styles.darkTextMuted]}>
-                    🔧 Demo Mode: Use OTP "{MOCK_VALID_OTP}" to verify
-                </Text>
             </View>
         </SafeAreaView>
     );
@@ -221,10 +235,7 @@ export function OTPScreen({ navigation, route, onAuthSuccess }: OTPScreenProps):
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
-    },
-    darkContainer: {
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#0f172a', // Dark slate to match Login
     },
     content: {
         flex: 1,
@@ -238,31 +249,26 @@ const styles = StyleSheet.create({
     },
     backButtonText: {
         fontSize: 16,
-        color: '#3b82f6',
+        color: '#94a3b8',
         fontWeight: '500',
     },
     title: {
         fontSize: 28,
-        fontWeight: '700',
-        color: '#1a1a1a',
+        fontWeight: 'bold',
+        color: '#f8fafc',
         textAlign: 'center',
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        color: '#666666',
+        color: '#94a3b8',
         textAlign: 'center',
         marginBottom: 32,
         lineHeight: 24,
     },
     contactText: {
         fontWeight: '600',
-    },
-    darkText: {
-        color: '#ffffff',
-    },
-    darkTextMuted: {
-        color: '#999999',
+        color: '#f8fafc',
     },
     otpContainer: {
         flexDirection: 'row',
@@ -274,29 +280,24 @@ const styles = StyleSheet.create({
         width: 48,
         height: 56,
         borderRadius: 12,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#1e293b',
         borderWidth: 2,
-        borderColor: '#e0e0e0',
+        borderColor: '#334155',
         fontSize: 24,
         fontWeight: '600',
         textAlign: 'center',
-        color: '#1a1a1a',
-    },
-    darkOtpInput: {
-        backgroundColor: '#2a2a2a',
-        borderColor: '#3a3a3a',
-        color: '#ffffff',
+        color: '#f8fafc',
     },
     otpInputFilled: {
-        borderColor: '#3b82f6',
+        borderColor: '#10b981', // Emerald 500
     },
     otpInputError: {
         borderColor: '#ef4444',
-        backgroundColor: '#fef2f2',
+        backgroundColor: '#450a0a',
     },
     otpInputSuccess: {
         borderColor: '#22c55e',
-        backgroundColor: '#f0fdf4',
+        backgroundColor: '#064e3b',
     },
     errorText: {
         color: '#ef4444',
@@ -312,13 +313,14 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     button: {
-        backgroundColor: '#3b82f6',
+        backgroundColor: '#10b981',
         borderRadius: 12,
         paddingVertical: 16,
         alignItems: 'center',
     },
     buttonDisabled: {
-        backgroundColor: '#93c5fd',
+        backgroundColor: '#065f46', // Darker emerald
+        opacity: 0.7,
     },
     buttonSuccess: {
         backgroundColor: '#22c55e',
@@ -336,20 +338,14 @@ const styles = StyleSheet.create({
     },
     resendText: {
         fontSize: 14,
-        color: '#666666',
+        color: '#94a3b8',
     },
     resendLink: {
         fontSize: 14,
-        color: '#3b82f6',
+        color: '#10b981',
         fontWeight: '600',
     },
     resendLinkDisabled: {
-        color: '#999999',
-    },
-    mockNotice: {
-        fontSize: 12,
-        color: '#999',
-        textAlign: 'center',
-        marginTop: 32,
+        color: '#64748b',
     },
 });

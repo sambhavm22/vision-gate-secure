@@ -1,196 +1,244 @@
 /**
  * Login Screen
- * Phone/Email input with OTP request
- * MOCKED: No real backend integration
+ * Redesigned to match HelperHub Dark Theme
  */
 
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    useColorScheme,
 } from 'react-native';
+import { supabase } from '../services/supabase';
 
 type LoginScreenProps = {
     navigation: NativeStackNavigationProp<any>;
 };
 
-type LoginMethod = 'phone' | 'email';
+type LoginMethod = 'email' | 'phone';
+type AuthMode = 'signIn' | 'signUp';
 
 export function LoginScreen({ navigation }: LoginScreenProps): React.JSX.Element {
-    const isDarkMode = useColorScheme() === 'dark';
+    const [method, setMethod] = useState<LoginMethod>('email');
+    const [authMode, setAuthMode] = useState<AuthMode>('signIn');
 
-    const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
-    const [phoneNumber, setPhoneNumber] = useState('');
+    // Form States
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [phone, setPhone] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Frontend-only validation
-    const isValidPhone = (phone: string) => {
-        const cleaned = phone.replace(/\D/g, '');
-        return cleaned.length >= 10;
-    };
-
-    const isValidEmail = (emailInput: string) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(emailInput);
-    };
-
-    const isFormValid = loginMethod === 'phone'
-        ? isValidPhone(phoneNumber)
-        : isValidEmail(email);
-
-    const handleSendOTP = async () => {
-        setError('');
-
-        // Frontend validation
-        if (loginMethod === 'phone' && !isValidPhone(phoneNumber)) {
-            setError('Please enter a valid phone number');
-            return;
-        }
-        if (loginMethod === 'email' && !isValidEmail(email)) {
-            setError('Please enter a valid email address');
-            return;
-        }
-
+    const handleEmailAuth = async () => {
         setLoading(true);
+        setError('');
+        try {
+            if (authMode === 'signIn') {
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                Alert.alert('Check your email', 'We sent you a confirmation link.');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Authentication failed');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        // MOCK: Simulate API call delay
-        // TODO: Replace with real Supabase auth call
-        await new Promise(resolve => setTimeout(resolve, 1500));
+    const handlePhoneAuth = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const { error } = await supabase.auth.signInWithOtp({
+                phone,
+            });
+            if (error) throw error;
 
-        setLoading(false);
+            navigation.navigate('OTP', {
+                contact: phone,
+                method: 'phone',
+            });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to send OTP');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        // Navigate to OTP screen with contact info
-        navigation.navigate('OTP', {
-            contact: loginMethod === 'phone' ? phoneNumber : email,
-            method: loginMethod,
-        });
+    const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+        try {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                    redirectTo: 'user-mobile://login-callback',
+                    queryParams: {
+                        prompt: 'select_account',
+                    },
+                },
+            });
+            if (error) throw error;
+            if (data.url) {
+                await Linking.openURL(data.url);
+            }
+        } catch (err) {
+            Alert.alert('Social Login Error', err instanceof Error ? err.message : 'Failed');
+        }
     };
 
     return (
-        <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
+        <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.keyboardView}
+                style={{ flex: 1 }}
             >
-                <View style={styles.content}>
-                    {/* Header */}
-                    <Text style={[styles.title, isDarkMode && styles.darkText]}>
-                        Welcome to HelperHub
-                    </Text>
-                    <Text style={[styles.subtitle, isDarkMode && styles.darkTextMuted]}>
-                        Sign in to continue
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+
+                    {/* Logo Area */}
+                    <View style={styles.logoContainer}>
+                        <View style={styles.logoBox}>
+                            <Text style={styles.logoText}>HH</Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.title}>Welcome to HelperHub</Text>
+                    <Text style={styles.subtitle}>
+                        {authMode === 'signIn' ? 'Sign in to access your account' : 'Create a new account'}
                     </Text>
 
-                    {/* Login Method Toggle */}
-                    <View style={styles.toggleContainer}>
+                    {/* Tabs */}
+                    <View style={styles.tabContainer}>
                         <TouchableOpacity
-                            style={[
-                                styles.toggleButton,
-                                loginMethod === 'phone' && styles.toggleButtonActive,
-                            ]}
-                            onPress={() => {
-                                setLoginMethod('phone');
-                                setError('');
-                            }}
+                            style={[styles.tab, method === 'email' && styles.activeTab]}
+                            onPress={() => setMethod('email')}
                         >
-                            <Text style={[
-                                styles.toggleText,
-                                loginMethod === 'phone' && styles.toggleTextActive,
-                            ]}>
-                                Phone
-                            </Text>
+                            <Text style={[styles.tabText, method === 'email' && styles.activeTabText]}>Email</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[
-                                styles.toggleButton,
-                                loginMethod === 'email' && styles.toggleButtonActive,
-                            ]}
-                            onPress={() => {
-                                setLoginMethod('email');
-                                setError('');
-                            }}
+                            style={[styles.tab, method === 'phone' && styles.activeTab]}
+                            onPress={() => setMethod('phone')}
                         >
-                            <Text style={[
-                                styles.toggleText,
-                                loginMethod === 'email' && styles.toggleTextActive,
-                            ]}>
-                                Email
-                            </Text>
+                            <Text style={[styles.tabText, method === 'phone' && styles.activeTabText]}>Mobile OTP</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* Input Field */}
-                    {loginMethod === 'phone' ? (
-                        <View style={styles.inputContainer}>
-                            <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>
-                                Phone Number
-                            </Text>
-                            <TextInput
-                                style={[styles.input, isDarkMode && styles.darkInput]}
-                                placeholder="+1 (555) 123-4567"
-                                placeholderTextColor="#999"
-                                keyboardType="phone-pad"
-                                value={phoneNumber}
-                                onChangeText={setPhoneNumber}
-                                autoFocus
-                            />
-                        </View>
-                    ) : (
-                        <View style={styles.inputContainer}>
-                            <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>
-                                Email Address
-                            </Text>
-                            <TextInput
-                                style={[styles.input, isDarkMode && styles.darkInput]}
-                                placeholder="you@example.com"
-                                placeholderTextColor="#999"
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                value={email}
-                                onChangeText={setEmail}
-                                autoFocus
-                            />
-                        </View>
-                    )}
+                    {/* Form Content */}
+                    <View style={styles.formContainer}>
+                        {method === 'email' ? (
+                            <>
+                                <Text style={styles.label}>Email</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="your@email.com"
+                                    placeholderTextColor="#64748b"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                />
 
-                    {/* Error Message */}
-                    {error ? (
-                        <Text style={styles.errorText}>{error}</Text>
-                    ) : null}
+                                <Text style={styles.label}>Password</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="••••••••"
+                                    placeholderTextColor="#64748b"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                />
 
-                    {/* Send OTP Button */}
-                    <TouchableOpacity
-                        style={[
-                            styles.button,
-                            (!isFormValid || loading) && styles.buttonDisabled,
-                        ]}
-                        onPress={handleSendOTP}
-                        disabled={!isFormValid || loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
+                                <TouchableOpacity
+                                    style={styles.primaryButton}
+                                    onPress={handleEmailAuth}
+                                    disabled={loading}
+                                >
+                                    {loading ? <ActivityIndicator color="#fff" /> : (
+                                        <Text style={styles.primaryButtonText}>
+                                            {authMode === 'signIn' ? 'Sign In' : 'Sign Up'}
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            </>
                         ) : (
-                            <Text style={styles.buttonText}>Send OTP</Text>
+                            <>
+                                <Text style={styles.label}>Mobile Number</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="+1 234 567 8900"
+                                    placeholderTextColor="#64748b"
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    keyboardType="phone-pad"
+                                />
+                                <TouchableOpacity
+                                    style={styles.primaryButton}
+                                    onPress={handlePhoneAuth}
+                                    disabled={loading}
+                                >
+                                    {loading ? <ActivityIndicator color="#fff" /> : (
+                                        <Text style={styles.primaryButtonText}>Send OTP</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </>
                         )}
-                    </TouchableOpacity>
 
-                    {/* Mock Notice */}
-                    <Text style={[styles.mockNotice, isDarkMode && styles.darkTextMuted]}>
-                        🔧 Demo Mode: OTP will be sent (mocked)
-                    </Text>
-                </View>
+                        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+                        {/* Social Login Section */}
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
+
+                        <View style={styles.socialContainer}>
+                            <TouchableOpacity
+                                style={[styles.socialButton, { backgroundColor: '#10b981' }]}
+                                onPress={() => handleSocialLogin('google')}
+                            >
+                                <Text style={styles.socialButtonText}>G  Google</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.socialButton, { backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155' }]}
+                                onPress={() => handleSocialLogin('facebook')}
+                            >
+                                <Text style={styles.socialButtonText}>f  Facebook</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Toggle Mode */}
+                        <TouchableOpacity
+                            style={styles.footerLink}
+                            onPress={() => setAuthMode(mode => mode === 'signIn' ? 'signUp' : 'signIn')}
+                        >
+                            <Text style={styles.footerText}>
+                                {authMode === 'signIn' ? "Don't have an account? " : "Already have an account? "}
+                                <Text style={styles.linkText}>
+                                    {authMode === 'signIn' ? 'Sign up' : 'Sign in'}
+                                </Text>
+                            </Text>
+                        </TouchableOpacity>
+
+                    </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -199,116 +247,139 @@ export function LoginScreen({ navigation }: LoginScreenProps): React.JSX.Element
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#0f172a', // Dark slate background
     },
-    darkContainer: {
-        backgroundColor: '#1a1a1a',
-    },
-    keyboardView: {
-        flex: 1,
-    },
-    content: {
-        flex: 1,
+    scrollContent: {
+        flexGrow: 1,
+        padding: 24,
         justifyContent: 'center',
-        paddingHorizontal: 24,
+    },
+    logoContainer: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    logoBox: {
+        width: 80,
+        height: 80,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#10b981',
     },
     title: {
         fontSize: 28,
-        fontWeight: '700',
-        color: '#1a1a1a',
+        fontWeight: 'bold',
+        color: '#f8fafc',
         textAlign: 'center',
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        color: '#666666',
+        color: '#94a3b8',
         textAlign: 'center',
         marginBottom: 32,
     },
-    darkText: {
-        color: '#ffffff',
-    },
-    darkTextMuted: {
-        color: '#999999',
-    },
-    toggleContainer: {
+    tabContainer: {
         flexDirection: 'row',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#1e293b',
         borderRadius: 12,
         padding: 4,
         marginBottom: 24,
     },
-    toggleButton: {
+    tab: {
         flex: 1,
         paddingVertical: 12,
-        borderRadius: 8,
         alignItems: 'center',
+        borderRadius: 8,
     },
-    toggleButtonActive: {
-        backgroundColor: '#ffffff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+    activeTab: {
+        backgroundColor: '#0f172a',
     },
-    toggleText: {
-        fontSize: 14,
+    tabText: {
+        color: '#64748b',
         fontWeight: '600',
-        color: '#666666',
     },
-    toggleTextActive: {
-        color: '#1a1a1a',
+    activeTabText: {
+        color: '#f8fafc',
     },
-    inputContainer: {
-        marginBottom: 16,
+    formContainer: {
+        gap: 16,
     },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#666666',
-        marginBottom: 8,
+    label: {
+        color: '#f8fafc',
+        fontWeight: '600',
+        marginBottom: -8,
+        marginLeft: 4,
     },
     input: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#1e293b',
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        fontSize: 16,
-        color: '#1a1a1a',
+        padding: 16,
+        color: '#f8fafc',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: '#334155',
     },
-    darkInput: {
-        backgroundColor: '#2a2a2a',
-        borderColor: '#3a3a3a',
-        color: '#ffffff',
-    },
-    errorText: {
-        color: '#ef4444',
-        fontSize: 14,
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    button: {
-        backgroundColor: '#3b82f6',
+    primaryButton: {
+        backgroundColor: '#10b981', // Emerald 500
         borderRadius: 12,
-        paddingVertical: 16,
+        padding: 16,
         alignItems: 'center',
         marginTop: 8,
     },
-    buttonDisabled: {
-        backgroundColor: '#93c5fd',
-    },
-    buttonText: {
-        color: '#ffffff',
+    primaryButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
         fontSize: 16,
+    },
+    errorText: {
+        color: '#ef4444',
+        textAlign: 'center',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 16,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#334155',
+    },
+    dividerText: {
+        color: '#64748b',
+        marginHorizontal: 16,
+        fontSize: 12,
         fontWeight: '600',
     },
-    mockNotice: {
-        fontSize: 12,
-        color: '#999',
-        textAlign: 'center',
+    socialContainer: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    socialButton: {
+        flex: 1,
+        padding: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    socialButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+    },
+    footerLink: {
         marginTop: 24,
+        alignItems: 'center',
+    },
+    footerText: {
+        color: '#94a3b8',
+    },
+    linkText: {
+        color: '#10b981',
+        fontWeight: 'bold',
     },
 });
