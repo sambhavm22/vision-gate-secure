@@ -67,7 +67,7 @@ export function HomeScreen(): React.JSX.Element {
 
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedService, setSelectedService] = useState<typeof SERVICES[0] | null>(null);
-    const [durationModalVisible, setDurationModalVisible] = useState(false);
+
 
 
     const DURATION_OPTIONS = [
@@ -86,28 +86,18 @@ export function HomeScreen(): React.JSX.Element {
 
     const handleBooking = (type: 'now' | 'prebook') => {
         setModalVisible(false);
-        if (type === 'now') {
-            setTimeout(() => setDurationModalVisible(true), 300);
-        } else {
-            if (selectedService) {
+        if (selectedService) {
+            if (type === 'now') {
+                navigation.navigate('DurationSelection', {
+                    serviceId: selectedService.id,
+                    serviceName: selectedService.name
+                });
+            } else {
                 navigation.navigate('Schedule', {
                     serviceId: selectedService.id,
                     serviceName: selectedService.name
                 });
             }
-        }
-    };
-
-    const handleDurationConfirm = (durationOption: typeof DURATION_OPTIONS[0]) => {
-        setDurationModalVisible(false);
-        if (selectedService) {
-            navigation.navigate('Booking', {
-                serviceId: selectedService.id,
-                serviceName: selectedService.name,
-                bookingType: 'now',
-                duration: parseFloat(durationOption.label),
-                price: durationOption.price
-            });
         }
     };
 
@@ -139,7 +129,10 @@ export function HomeScreen(): React.JSX.Element {
                     <View style={styles.bannerContent}>
                         <Text style={styles.bannerTitle}>Special Offer!</Text>
                         <Text style={styles.bannerSubtitle}>Get 20% off on your first deep cleaning service.</Text>
-                        <TouchableOpacity style={styles.bannerButton}>
+                        <TouchableOpacity
+                            style={styles.bannerButton}
+                            onPress={() => handleServicePress(SERVICES[0])}
+                        >
                             <Text style={styles.bannerButtonText}>Book Now</Text>
                         </TouchableOpacity>
                     </View>
@@ -253,64 +246,14 @@ export function HomeScreen(): React.JSX.Element {
                                 style={[styles.actionButton, styles.secondaryButton]}
                                 onPress={() => handleBooking('prebook')}
                             >
-                                <Text style={[styles.buttonText, styles.secondaryButtonText]}>Pre-book</Text>
+                                <Text style={[styles.buttonText, styles.secondaryButtonText]}>Book Later</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             </Modal>
 
-            {/* Duration Selection Modal (Book Now) */}
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={durationModalVisible}
-                onRequestClose={() => setDurationModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: '#0f172a', maxHeight: '90%' }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                            <View>
-                                <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>
-                                    Select duration of service
-                                </Text>
-                            </View>
-                            <TouchableOpacity onPress={() => setDurationModalVisible(false)}>
-                                <Text style={{ fontSize: 20, color: '#94a3b8' }}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
 
-                        <View style={{ alignSelf: 'flex-end', backgroundColor: '#fce7f3', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 20 }}>
-                            <Text style={{ color: '#db2777', fontWeight: 'bold', fontSize: 12 }}>Arriving in 15 Min</Text>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
-                            {DURATION_OPTIONS.map((option) => (
-                                <View key={option.id} style={{ width: '48%', backgroundColor: 'white', borderRadius: 16, padding: 12, alignItems: 'center', marginBottom: 12 }}>
-                                    <View style={{ backgroundColor: '#d1fae5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginBottom: 8 }}>
-                                        <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 10 }}>{option.discount}</Text>
-                                    </View>
-                                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0f172a', marginBottom: 4 }}>{option.label}</Text>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#cbd5e1', marginRight: 6 }}>₹{option.price}</Text>
-                                        <Text style={{ fontSize: 12, color: '#94a3b8', textDecorationLine: 'line-through' }}>₹{option.originalPrice}</Text>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={{ backgroundColor: '#0f172a', width: '100%', paddingVertical: 8, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#db2777' }}
-                                        onPress={() => handleDurationConfirm(option)}
-                                    >
-                                        <Text style={{ color: '#db2777', fontWeight: 'bold' }}>Book</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                        </View>
-
-                        <Text style={{ color: '#db2777', textAlign: 'center', marginTop: 20, fontSize: 12 }}>
-                            Need service for longer? Book for a Full Day or Custom hours
-                        </Text>
-                    </View>
-                </View>
-            </Modal>
 
             {/* Schedule Service Modal (Pre-book) */}
 

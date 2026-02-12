@@ -11,3 +11,4 @@ export { ProfileScreen } from './ProfileScreen';
 export { ScheduleScreen } from './ScheduleScreen';
 export { SupportScreen } from './SupportScreen';
 
+export { DurationSelectionScreen } from './DurationSelectionScreen';

@@ -12,6 +12,7 @@ import { ActivityIndicator, StatusBar, Text, useColorScheme, View } from 'react-
 import { useUser } from './hooks/useUser';
 import {
     BookingScreen,
+    DurationSelectionScreen,
     HomeScreen,
     LoginScreen,
     MyBookingsScreen,
@@ -36,6 +37,10 @@ export type RootStackParamList = {
         time?: string;
     };
     Schedule: {
+        serviceId: string;
+        serviceName: string;
+    };
+    DurationSelection: {
         serviceId: string;
         serviceName: string;
     };
@@ -129,6 +134,11 @@ function App(): React.JSX.Element {
                         <Stack.Screen
                             name="Schedule"
                             component={ScheduleScreen}
+                            options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="DurationSelection"
+                            component={DurationSelectionScreen}
                             options={{ headerShown: false }}
                         />
                     </>
