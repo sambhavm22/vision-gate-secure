@@ -1,10 +1,14 @@
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RootStackParamList } from '../App';
 import { getUserDisplayName, useUser } from '../hooks/useUser';
 import { supabase } from '../services/supabase';
 
 export function ProfileScreen(): React.JSX.Element {
     const { user } = useUser();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const displayName = getUserDisplayName(user);
     const email = user?.email || 'sambhavm22@gmail.com';
     const phone = user?.phone || 'Not provided';
@@ -15,10 +19,10 @@ export function ProfileScreen(): React.JSX.Element {
     };
 
     const QUICK_ACTIONS = [
-        { id: '1', title: 'My Bookings', subtitle: 'View all bookings', icon: '📅', color: '#ec4899' },
-        { id: '2', title: 'My Wallet', subtitle: '₹0', icon: '👛', color: '#ec4899' },
-        { id: '3', title: 'All Offers', subtitle: '1 available', icon: '🏷️', color: '#ec4899' },
-        { id: '4', title: 'Help & Support', subtitle: 'Get Quick Help', icon: '❓', color: '#ec4899' },
+        { id: '1', title: 'My Bookings', subtitle: 'View all bookings', icon: '📅', color: '#ec4899', route: 'MyBookings' },
+        { id: '2', title: 'My Wallet', subtitle: '₹0', icon: '👛', color: '#ec4899' }, // No route yet
+        { id: '3', title: 'All Offers', subtitle: '1 available', icon: '🏷️', color: '#ec4899' }, // No route yet
+        { id: '4', title: 'Help & Support', subtitle: 'Get Quick Help', icon: '❓', color: '#ec4899', route: 'Support' },
     ];
 
     const MENU_ITEMS = [
@@ -26,6 +30,14 @@ export function ProfileScreen(): React.JSX.Element {
         { id: '2', title: 'Saved Addresses', icon: '🏠' },
         { id: '3', title: 'Manage Account', icon: '⚙️' },
     ];
+
+    const handleQuickAction = (route?: string) => {
+        if (route === 'MyBookings') {
+            navigation.navigate('MainTabs', { screen: 'MyBookings' });
+        } else if (route === 'Support') {
+            navigation.navigate('Support');
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -70,7 +82,11 @@ export function ProfileScreen(): React.JSX.Element {
                 {/* Quick Actions Grid */}
                 <View style={styles.gridContainer}>
                     {QUICK_ACTIONS.map((item) => (
-                        <TouchableOpacity key={item.id} style={styles.gridItem}>
+                        <TouchableOpacity
+                            key={item.id}
+                            style={styles.gridItem}
+                            onPress={() => item.route && handleQuickAction(item.route)}
+                        >
                             <View style={[styles.gridIconCircle, { backgroundColor: item.color + '20' }]}>
                                 <Text style={[styles.gridIcon, { color: item.color }]}>{item.icon}</Text>
                             </View>

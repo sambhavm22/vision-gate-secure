@@ -13,8 +13,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
-    useColorScheme
+    View
 } from 'react-native';
 import { RootStackParamList } from '../App';
 import { getUserDisplayName, useUser } from '../hooks/useUser';
@@ -57,7 +56,7 @@ const SERVICE_GUIDELINES: Record<string, { dos: string[]; donts: string[] }> = {
 };
 
 export function HomeScreen(): React.JSX.Element {
-    const isDarkMode = useColorScheme() === 'dark';
+    const isDarkMode = true; // Use Dark Mode by default to match Profile/Bookings
     const { user } = useUser();
     const displayName = getUserDisplayName(user);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();

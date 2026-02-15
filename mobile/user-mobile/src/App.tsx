@@ -7,7 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { ActivityIndicator, StatusBar, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, StatusBar, Text, View } from 'react-native';
 
 import { useUser } from './hooks/useUser';
 import {
@@ -19,13 +19,14 @@ import {
     OTPScreen,
     ProfileScreen,
     ScheduleScreen,
+    SupportScreen,
 } from './screens';
 
 // Navigation type definitions
 export type RootStackParamList = {
     Login: undefined;
     OTP: { contact: string; method: 'phone' | 'email' };
-    MainTabs: undefined;
+    MainTabs: { screen?: keyof MainTabParamList };
     Booking: {
         serviceId: string;
         serviceName: string;
@@ -43,6 +44,7 @@ export type RootStackParamList = {
         serviceId: string;
         serviceName: string;
     };
+    Support: undefined;
 };
 
 export type MainTabParamList = {
@@ -56,7 +58,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
-    const isDarkMode = useColorScheme() === 'dark';
+    const isDarkMode = true; // Use Dark Mode by default
+
 
     return (
         <Tab.Navigator
@@ -94,7 +97,7 @@ function MainTabs() {
 }
 
 function App(): React.JSX.Element {
-    const isDarkMode = useColorScheme() === 'dark';
+    const isDarkMode = true; // Use Dark Mode by default
     const { session, loading } = useUser();
 
     const handleAuthSuccess = () => {
@@ -135,6 +138,11 @@ function App(): React.JSX.Element {
                             name="DurationSelection"
                             component={DurationSelectionScreen}
                             options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="Support"
+                            component={SupportScreen}
+                            options={{ headerShown: true, title: 'Help & Support', headerBackTitle: 'Back', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
                         />
                     </>
                 ) : (
