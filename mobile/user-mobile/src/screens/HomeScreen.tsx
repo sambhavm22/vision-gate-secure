@@ -176,7 +176,7 @@ export function HomeScreen(): React.JSX.Element {
                                 <Text style={styles.featureIcon}>🛡️</Text>
                             </View>
                             <Text style={styles.featureTitle}>Verified Professionals</Text>
-                            <Text style={styles.featureDescription}>Every helper undergoes a strict background check.</Text>
+                            <Text style={styles.featureDescription}>Background verified via DigiLocker.</Text>
                         </View>
                         <View style={styles.featureItem}>
                             <View style={styles.featureIconContainer}>

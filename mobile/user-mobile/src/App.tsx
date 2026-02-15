@@ -19,7 +19,6 @@ import {
     OTPScreen,
     ProfileScreen,
     ScheduleScreen,
-    SupportScreen,
 } from './screens';
 
 // Navigation type definitions
@@ -49,7 +48,7 @@ export type RootStackParamList = {
 export type MainTabParamList = {
     Home: undefined;
     MyBookings: undefined;
-    Support: undefined;
+
     Profile: undefined;
 };
 
@@ -84,11 +83,7 @@ function MainTabs() {
                     tabBarIcon: ({ color }) => <Text style={{ color }}>📅</Text>
                 }}
             />
-            <Tab.Screen
-                name="Support"
-                component={SupportScreen}
-                options={{ tabBarIcon: ({ color }) => <Text style={{ color }}>💬</Text> }}
-            />
+
             <Tab.Screen
                 name="Profile"
                 component={ProfileScreen}
