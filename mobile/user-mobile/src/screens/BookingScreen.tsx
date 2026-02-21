@@ -15,6 +15,7 @@ import {
     useColorScheme
 } from 'react-native';
 import { RootStackParamList } from '../App';
+import { useLocation } from '../hooks/useLocation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Booking'>;
 
@@ -30,21 +31,25 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
     });
 
     const [loading, setLoading] = useState(false);
-    const [fetchingLocation, setFetchingLocation] = useState(false);
 
-    const handleUseCurrentLocation = () => {
-        setFetchingLocation(true);
-        // Simulate fetching location
-        setTimeout(() => {
-            setFetchingLocation(false);
-            setAddress({
-                ...address,
-                fullAddress: '123, Tech Park Road, Sector 5',
-                city: 'Bangalore',
-                zip: '560103'
-            });
+    // expo-location hook for cross-platform location fetching
+    const { loading: fetchingLocation, error: locationError, getCurrentLocation } = useLocation();
+
+    const handleUseCurrentLocation = async () => {
+        // Uses expo-location — works on Expo Go, iOS Simulator, and Android Emulator
+        const locationAddress = await getCurrentLocation();
+
+        if (locationAddress) {
+            setAddress(prev => ({
+                ...prev,
+                fullAddress: locationAddress.fullAddress,
+                city: locationAddress.city,
+                zip: locationAddress.zip,
+            }));
             Alert.alert('Location Fetched', 'Address filled from current location.');
-        }, 1500);
+        } else if (locationError) {
+            Alert.alert('Location Error', locationError);
+        }
     };
 
     const handleProceedToPayment = () => {
@@ -363,7 +368,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTotalColor: '#e2e8f0',
+        borderTopColor: '#e2e8f0',
     },
     darkFooter: {
         backgroundColor: '#0f172a',

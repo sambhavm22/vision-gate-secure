@@ -4,12 +4,13 @@
  */
 
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
-    Linking,
     Platform,
     SafeAreaView,
     ScrollView,
@@ -86,18 +87,54 @@ export function LoginScreen({ navigation }: LoginScreenProps): React.JSX.Element
 
     const handleSocialLogin = async (provider: 'google' | 'facebook') => {
         try {
+            // Generate the correct redirect URI for the current environment
+            // In Expo Go: exp://192.168.x.x:8082/--/login-callback
+            // In Dev Build: user-mobile://login-callback
+            const redirectUrl = makeRedirectUri({
+                path: 'login-callback',
+            });
+
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
-                    redirectTo: 'user-mobile://login-callback',
+                    redirectTo: redirectUrl,
                     queryParams: {
                         prompt: 'select_account',
                     },
+                    skipBrowserRedirect: true,
                 },
             });
             if (error) throw error;
+
             if (data.url) {
-                await Linking.openURL(data.url);
+                // Use WebBrowser.openAuthSessionAsync to handle the OAuth flow
+                // This opens an in-app browser that can intercept the redirect
+                const result = await WebBrowser.openAuthSessionAsync(
+                    data.url,
+                    redirectUrl,
+                );
+
+                if (result.type === 'success' && result.url) {
+                    // Extract tokens from the redirect URL
+                    const url = result.url;
+                    if (url.includes('access_token') && url.includes('refresh_token')) {
+                        const hashIndex = url.indexOf('#');
+                        if (hashIndex !== -1) {
+                            const fragment = url.substring(hashIndex + 1);
+                            const params = new URLSearchParams(fragment);
+                            const access_token = params.get('access_token');
+                            const refresh_token = params.get('refresh_token');
+
+                            if (access_token && refresh_token) {
+                                const { error: sessionError } = await supabase.auth.setSession({
+                                    access_token,
+                                    refresh_token,
+                                });
+                                if (sessionError) throw sessionError;
+                            }
+                        }
+                    }
+                }
             }
         } catch (err) {
             Alert.alert('Social Login Error', err instanceof Error ? err.message : 'Failed');
