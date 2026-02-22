@@ -21,6 +21,7 @@ import {
     ScheduleScreen,
     SupportScreen,
     WalletScreen,
+    YourExpertsScreen,
 } from './screens';
 
 // Navigation type definitions
@@ -47,6 +48,7 @@ export type RootStackParamList = {
     };
     Support: undefined;
     Wallet: undefined;
+    YourExperts: undefined;
 };
 
 export type MainTabParamList = {
@@ -149,6 +151,11 @@ function App(): React.JSX.Element {
                         <Stack.Screen
                             name="Wallet"
                             component={WalletScreen}
+                            options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="YourExperts"
+                            component={YourExpertsScreen}
                             options={{ headerShown: false }}
                         />
                     </>

@@ -26,7 +26,7 @@ export function ProfileScreen(): React.JSX.Element {
     ];
 
     const MENU_ITEMS = [
-        { id: '1', title: 'Your Experts', icon: '👥' },
+        { id: '1', title: 'Your Experts', icon: '👥', route: 'YourExperts' },
         { id: '2', title: 'Saved Addresses', icon: '🏠' },
         { id: '3', title: 'Manage Account', icon: '⚙️' },
     ];
@@ -116,7 +116,7 @@ export function ProfileScreen(): React.JSX.Element {
                 {/* Manage Account List */}
                 <View style={styles.menuList}>
                     {MENU_ITEMS.map((item, index) => (
-                        <TouchableOpacity key={item.id} style={[styles.menuItem, index !== MENU_ITEMS.length - 1 && styles.menuItemBorder]}>
+                        <TouchableOpacity key={item.id} style={[styles.menuItem, index !== MENU_ITEMS.length - 1 && styles.menuItemBorder]} onPress={() => item.route && navigation.navigate(item.route as any)}>
                             <View style={styles.menuIconContainer}>
                                 <Text style={styles.menuIcon}>{item.icon}</Text>
                             </View>
