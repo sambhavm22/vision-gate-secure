@@ -13,5 +13,9 @@
 module.exports = {
     name: 'HelperHub',
     slug: 'helperhub-user',
+    scheme: 'user-mobile',
     version: '3.1.9',
+    plugins: [
+        'expo-web-browser',
+    ],
 };
