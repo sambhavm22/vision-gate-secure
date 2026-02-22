@@ -20,7 +20,7 @@ export function ProfileScreen(): React.JSX.Element {
 
     const QUICK_ACTIONS = [
         { id: '1', title: 'My Bookings', subtitle: 'View all bookings', icon: '📅', color: '#ec4899', route: 'MyBookings' },
-        { id: '2', title: 'My Wallet', subtitle: '₹0', icon: '👛', color: '#ec4899' }, // No route yet
+        { id: '2', title: 'My Wallet', subtitle: '₹0', icon: '👛', color: '#ec4899', route: 'Wallet' },
         { id: '3', title: 'All Offers', subtitle: '1 available', icon: '🏷️', color: '#ec4899' }, // No route yet
         { id: '4', title: 'Help & Support', subtitle: 'Get Quick Help', icon: '❓', color: '#ec4899', route: 'Support' },
     ];
@@ -36,6 +36,8 @@ export function ProfileScreen(): React.JSX.Element {
             navigation.navigate('MainTabs', { screen: 'MyBookings' });
         } else if (route === 'Support') {
             navigation.navigate('Support');
+        } else if (route === 'Wallet') {
+            navigation.navigate('Wallet');
         }
     };
 

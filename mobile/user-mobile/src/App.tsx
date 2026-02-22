@@ -20,6 +20,7 @@ import {
     ProfileScreen,
     ScheduleScreen,
     SupportScreen,
+    WalletScreen,
 } from './screens';
 
 // Navigation type definitions
@@ -45,6 +46,7 @@ export type RootStackParamList = {
         serviceName: string;
     };
     Support: undefined;
+    Wallet: undefined;
 };
 
 export type MainTabParamList = {
@@ -143,6 +145,11 @@ function App(): React.JSX.Element {
                             name="Support"
                             component={SupportScreen}
                             options={{ headerShown: true, title: 'Help & Support', headerBackTitle: 'Back', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                        <Stack.Screen
+                            name="Wallet"
+                            component={WalletScreen}
+                            options={{ headerShown: false }}
                         />
                     </>
                 ) : (
