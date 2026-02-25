@@ -25,18 +25,23 @@ export function ScheduleScreen(): React.JSX.Element {
     const route = useRoute<ScheduleScreenRouteProp>();
     const { serviceId, serviceName } = route.params;
 
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const currentDay = now.getDate();
+    const currentHour = now.getHours();
+
     const [scheduleTab, setScheduleTab] = useState<'single' | 'subscription'>('single');
-    const [selectedDate, setSelectedDate] = useState<number | null>(11); // Defaulting to 11th for demo as per image
-    const [selectedTime, setSelectedTime] = useState<string>('10:00');
+    const [viewMonth, setViewMonth] = useState(currentMonth); // 0-indexed
+    const [viewYear, setViewYear] = useState(currentYear);
+    const [selectedDate, setSelectedDate] = useState<number>(currentDay);
+    const [selectedTime, setSelectedTime] = useState<string | null>(null);
     const [scheduledDuration, setScheduledDuration] = useState(2);
 
     // Subscription State
     const [subType, setSubType] = useState<'daily' | 'alternate'>('daily');
     const [isIndefinite, setIsIndefinite] = useState(false);
 
-    // Simple calendar data generation (Feb 2026 as per image)
-    // Starting Feb 1st 2026 is a Sunday
-    const CALENDAR_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
     const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
     const TIME_SLOTS = [
@@ -45,16 +50,103 @@ export function ScheduleScreen(): React.JSX.Element {
         '15:00', '16:00', '17:00'
     ];
 
-    // Simple calendar data generation (Feb 2026 as per image)
+    // Dynamic calendar helpers
+    const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+    const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+    const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+    const firstDayOfWeek = getFirstDayOfMonth(viewYear, viewMonth);
+    const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+    const MONTH_NAMES = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Check if a day is in the past
+    const isDayPast = (day: number) => {
+        if (viewYear < currentYear) return true;
+        if (viewYear === currentYear && viewMonth < currentMonth) return true;
+        if (viewYear === currentYear && viewMonth === currentMonth && day < currentDay) return true;
+        return false;
+    };
+
+    // Check if the selected date is today
+    const isToday = viewYear === currentYear && viewMonth === currentMonth && selectedDate === currentDay;
+
+    // Check if a time slot is past (only relevant if today is selected)
+    const isTimePast = (timeStr: string) => {
+        if (!isToday) return false;
+        const hour = parseInt(timeStr.split(':')[0], 10);
+        return hour <= currentHour;
+    };
+
+    // Can go to previous month?
+    const canGoPrev = viewYear > currentYear || (viewYear === currentYear && viewMonth > currentMonth);
+
+    const handlePrevMonth = () => {
+        if (!canGoPrev) return;
+        if (viewMonth === 0) {
+            setViewMonth(11);
+            setViewYear(viewYear - 1);
+        } else {
+            setViewMonth(viewMonth - 1);
+        }
+        setSelectedDate(1);
+        setSelectedTime(null);
+    };
+
+    const handleNextMonth = () => {
+        if (viewMonth === 11) {
+            setViewMonth(0);
+            setViewYear(viewYear + 1);
+        } else {
+            setViewMonth(viewMonth + 1);
+        }
+        setSelectedDate(1);
+        setSelectedTime(null);
+    };
+
+    const handleDayPress = (day: number) => {
+        if (isDayPast(day)) return;
+        setSelectedDate(day);
+        // Reset time if it would be in the past on the newly selected date
+        if (selectedTime && viewYear === currentYear && viewMonth === currentMonth && day === currentDay) {
+            const hour = parseInt(selectedTime.split(':')[0], 10);
+            if (hour <= currentHour) {
+                setSelectedTime(null);
+            }
+        }
+    };
+
+    // Format date as YYYY-MM-DD
+    const formatDateISO = (day: number) => {
+        const m = String(viewMonth + 1).padStart(2, '0');
+        const d = String(day).padStart(2, '0');
+        return `${viewYear}-${m}-${d}`;
+    };
+
     const handleScheduleConfirm = () => {
-        // Just reusing the booking navigation for now
+        if (!selectedTime) {
+            // Auto-select first available time
+            const firstAvailable = TIME_SLOTS.find(t => !isTimePast(t));
+            if (!firstAvailable) return;
+            setSelectedTime(firstAvailable);
+        }
+
+        const timeToUse = selectedTime || TIME_SLOTS.find(t => !isTimePast(t)) || '09:00';
+
         navigation.navigate('Booking', {
             serviceId,
             serviceName,
             bookingType: 'prebook',
             duration: scheduledDuration,
-            date: scheduleTab === 'single' ? `2026-02-${selectedDate}` : `Starting 11/02/2026 (${subType})`,
-            time: selectedTime, // Simplified for now
+            date: scheduleTab === 'single'
+                ? formatDateISO(selectedDate)
+                : `Starting ${formatDateISO(selectedDate)} (${subType})`,
+            time: timeToUse,
             price: 400
         });
     };
@@ -99,9 +191,19 @@ export function ScheduleScreen(): React.JSX.Element {
 
                                 {/* Month Nav */}
                                 <View style={styles.monthNav}>
-                                    <TouchableOpacity style={styles.navArrow}><Text style={styles.navArrowText}>{'<'}</Text></TouchableOpacity>
-                                    <Text style={[styles.monthText, isDarkMode && styles.darkText]}>February 2026</Text>
-                                    <TouchableOpacity style={styles.navArrow}><Text style={styles.navArrowText}>{'>'}</Text></TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.navArrow, !canGoPrev && { opacity: 0.3 }]}
+                                        onPress={handlePrevMonth}
+                                        disabled={!canGoPrev}
+                                    >
+                                        <Text style={styles.navArrowText}>{'<'}</Text>
+                                    </TouchableOpacity>
+                                    <Text style={[styles.monthText, isDarkMode && styles.darkText]}>
+                                        {MONTH_NAMES[viewMonth]} {viewYear}
+                                    </Text>
+                                    <TouchableOpacity style={styles.navArrow} onPress={handleNextMonth}>
+                                        <Text style={styles.navArrowText}>{'>'}</Text>
+                                    </TouchableOpacity>
                                 </View>
 
                                 {/* Days Header */}
@@ -113,22 +215,31 @@ export function ScheduleScreen(): React.JSX.Element {
 
                                 {/* Days Grid */}
                                 <View style={styles.daysGrid}>
-                                    {CALENDAR_DAYS.map(day => (
-                                        <TouchableOpacity
-                                            key={day}
-                                            style={[
-                                                styles.dayCell,
-                                                selectedDate === day && styles.selectedDayCell
-                                            ]}
-                                            onPress={() => setSelectedDate(day)}
-                                        >
-                                            <Text style={[
-                                                styles.dayText,
-                                                isDarkMode && styles.darkTextMuted,
-                                                selectedDate === day && styles.selectedDayText
-                                            ]}>{day}</Text>
-                                        </TouchableOpacity>
+                                    {/* Blank spacers for proper alignment */}
+                                    {Array.from({ length: firstDayOfWeek }, (_, i) => (
+                                        <View key={`blank-${i}`} style={styles.dayCell} />
                                     ))}
+                                    {calendarDays.map(day => {
+                                        const past = isDayPast(day);
+                                        return (
+                                            <TouchableOpacity
+                                                key={day}
+                                                style={[
+                                                    styles.dayCell,
+                                                    selectedDate === day && !past && styles.selectedDayCell,
+                                                    past && { opacity: 0.3 },
+                                                ]}
+                                                onPress={() => handleDayPress(day)}
+                                                disabled={past}
+                                            >
+                                                <Text style={[
+                                                    styles.dayText,
+                                                    isDarkMode && styles.darkTextMuted,
+                                                    selectedDate === day && !past && styles.selectedDayText,
+                                                ]}>{day}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
                                 </View>
                             </View>
 
@@ -138,23 +249,28 @@ export function ScheduleScreen(): React.JSX.Element {
                                 <View style={{ marginBottom: 24 }}>
                                     <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Select Time</Text>
                                     <View style={styles.timeGrid}>
-                                        {TIME_SLOTS.map(time => (
-                                            <TouchableOpacity
-                                                key={time}
-                                                style={[
-                                                    styles.timeSlot,
-                                                    isDarkMode && styles.darkTimeSlot,
-                                                    selectedTime === time && styles.selectedTimeSlot
-                                                ]}
-                                                onPress={() => setSelectedTime(time)}
-                                            >
-                                                <Text style={[
-                                                    styles.timeText,
-                                                    isDarkMode && styles.darkText,
-                                                    selectedTime === time && styles.selectedTimeText
-                                                ]}>{time}</Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                        {TIME_SLOTS.map(time => {
+                                            const past = isTimePast(time);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={time}
+                                                    style={[
+                                                        styles.timeSlot,
+                                                        isDarkMode && styles.darkTimeSlot,
+                                                        selectedTime === time && !past && styles.selectedTimeSlot,
+                                                        past && { opacity: 0.3 },
+                                                    ]}
+                                                    onPress={() => !past && setSelectedTime(time)}
+                                                    disabled={past}
+                                                >
+                                                    <Text style={[
+                                                        styles.timeText,
+                                                        isDarkMode && styles.darkText,
+                                                        selectedTime === time && !past && styles.selectedTimeText,
+                                                    ]}>{time}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </View>
                                 </View>
 
@@ -268,8 +384,8 @@ export function ScheduleScreen(): React.JSX.Element {
                                 </Text>
                                 <Text style={[styles.summaryValue, isDarkMode && styles.darkSummaryText]}>
                                     {scheduleTab === 'single'
-                                        ? `Wed, ${selectedDate} Feb at ${selectedTime}`
-                                        : `Select Type from 11 Feb 2026 at 10:00`
+                                        ? `${DAY_NAMES[new Date(viewYear, viewMonth, selectedDate).getDay()]}, ${selectedDate} ${MONTH_NAMES[viewMonth].slice(0, 3)} at ${selectedTime || '--:--'}`
+                                        : `${subType} from ${selectedDate} ${MONTH_NAMES[viewMonth].slice(0, 3)} ${viewYear} at ${selectedTime || '--:--'}`
                                     }
                                 </Text>
                             </View>
