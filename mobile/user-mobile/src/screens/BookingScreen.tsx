@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { RootStackParamList } from '../App';
 import { useLocation } from '../hooks/useLocation';
+import { supabase } from '../services/supabase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Booking'>;
 
@@ -52,29 +53,92 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
         }
     };
 
-    const handleProceedToPayment = () => {
+    const handleProceedToPayment = async () => {
         if (!address.fullAddress || !address.city || !address.zip) {
             Alert.alert('Missing Address', 'Please provide a valid address, city, and pincode.');
             return;
         }
 
         setLoading(true);
-        setTimeout(() => {
+        try {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert('Error', 'You must be logged in to book a service.');
+                setLoading(false);
+                return;
+            }
+
+            // 1. Create address record
+            const { data: addressData, error: addressError } = await supabase
+                .from('addresses')
+                .insert({
+                    customer_id: user.id,
+                    label: address.label,
+                    address_line1: address.fullAddress,
+                    city: address.city,
+                    postal_code: parseInt(address.zip, 10) || null,
+                })
+                .select('id')
+                .single();
+
+            if (addressError) {
+                console.log('Address insert error:', addressError.message);
+                // Continue without address_id if insert fails
+            }
+
+            // 2. Determine scheduled_at
+            let scheduledAt: string;
+            if (bookingType === 'prebook' && date && time) {
+                scheduledAt = new Date(`${date}T${time}`).toISOString();
+            } else {
+                // For "now" bookings, schedule 30 min from now
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + 30);
+                scheduledAt = now.toISOString();
+            }
+
+            // 3. Insert booking
+            const { error: bookingError } = await supabase
+                .from('bookings')
+                .insert({
+                    customer_id: user.id,
+                    service_id: parseInt(serviceId, 10),
+                    address_id: addressData?.id || null,
+                    status: 'requested',
+                    scheduled_at: scheduledAt,
+                    duration_minutes: duration ? duration * 60 : 60,
+                    total_amount: price || 400,
+                    notes: `${serviceName} - ${address.label}`,
+                });
+
+            if (bookingError) {
+                Alert.alert('Booking Error', bookingError.message);
+                setLoading(false);
+                return;
+            }
+
             setLoading(false);
             Alert.alert(
-                'Payment Gateway',
-                `Redirecting to payment for ₹${price || 400}...\n\n(Mock Payment Processing)`,
+                'Booking Confirmed! ✅',
+                `Your ${serviceName} service has been booked for ₹${price || 400}.\n\nYou can view it in My Bookings.`,
                 [
                     {
-                        text: 'OK',
+                        text: 'View My Bookings',
                         onPress: () => {
-                            navigation.popToTop();
-                            Alert.alert('Booking Confirmed!', 'Your service has been scheduled.');
-                        }
-                    }
+                            navigation.navigate('MainTabs', { screen: 'MyBookings' });
+                        },
+                    },
+                    {
+                        text: 'OK',
+                        onPress: () => navigation.popToTop(),
+                    },
                 ]
             );
-        }, 1500);
+        } catch (err) {
+            setLoading(false);
+            Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong');
+        }
     };
 
     return (

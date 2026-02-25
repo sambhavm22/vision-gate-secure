@@ -18,13 +18,18 @@ type FilterTab = 'upcoming' | 'past';
 
 interface Booking {
     id: string;
-    service_name: string;
+    service_id: number;
     status: string;
-    booking_date: string;
-    booking_time: string;
-    duration: number;
-    address: string;
+    scheduled_at: string;
+    duration_minutes: number | null;
+    total_amount: number | null;
+    notes: string | null;
     created_at: string;
+    address_id: string | null;
+    services: { name: string } | null;
+    addresses: { address_line1: string; city: string } | null;
+    workers_public: { full_name: string } | null;
+    transactions: { payment_method: string; status: string }[] | null;
 }
 
 export function MyBookingsScreen(): React.JSX.Element {
@@ -39,17 +44,17 @@ export function MyBookingsScreen(): React.JSX.Element {
     const fetchBookings = useCallback(async () => {
         if (!user) return;
         try {
-            const now = new Date().toISOString().split('T')[0];
+            const now = new Date().toISOString();
             let query = supabase
                 .from('bookings')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('booking_date', { ascending: filterTab === 'upcoming' });
+                .select('*, services(name), addresses(address_line1, city), workers_public(full_name), transactions(payment_method, status)')
+                .eq('customer_id', user.id)
+                .order('scheduled_at', { ascending: filterTab === 'upcoming' });
 
             if (filterTab === 'upcoming') {
-                query = query.gte('booking_date', now);
+                query = query.gte('scheduled_at', now);
             } else {
-                query = query.lt('booking_date', now);
+                query = query.lt('scheduled_at', now);
             }
 
             const { data, error } = await query;
@@ -58,7 +63,7 @@ export function MyBookingsScreen(): React.JSX.Element {
                 console.log('Error fetching bookings:', error.message);
                 return;
             }
-            setBookings(data || []);
+            setBookings((data as Booking[]) || []);
         } catch (err) {
             console.log('Fetch error:', err);
         } finally {
@@ -81,14 +86,21 @@ export function MyBookingsScreen(): React.JSX.Element {
         switch (status?.toLowerCase()) {
             case 'confirmed':
             case 'assigned':
+            case 'accepted':
+            case 'matched':
                 return { bg: '#064e3b', text: '#6ee7b7' };
             case 'pending':
             case 'searching':
+            case 'requested':
                 return { bg: '#78350f', text: '#fcd34d' };
             case 'completed':
+            case 'paid':
                 return { bg: '#1e293b', text: '#94a3b8' };
             case 'cancelled':
                 return { bg: '#7f1d1d', text: '#fca5a5' };
+            case 'in_progress':
+            case 'en_route':
+                return { bg: '#1e3a5f', text: '#93c5fd' };
             default:
                 return { bg: '#334155', text: '#cbd5e1' };
         }
@@ -107,43 +119,92 @@ export function MyBookingsScreen(): React.JSX.Element {
         }
     };
 
+    const formatTime = (dateStr: string) => {
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+            });
+        } catch {
+            return '';
+        }
+    };
+
+    const formatStatus = (status: string) => {
+        return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    };
+
     const renderBookingCard = ({ item }: { item: Booking }) => {
         const statusColor = getStatusColor(item.status);
+        const serviceName = item.services?.name || 'Service';
+        const addressText = item.addresses
+            ? `${item.addresses.address_line1}${item.addresses.city ? ', ' + item.addresses.city : ''}`
+            : null;
+
+        const handlePress = () => {
+            const workerName = item.workers_public?.full_name || null;
+            const paymentMethod = item.transactions?.find(t => t.status === 'success')?.payment_method || null;
+            navigation.navigate('BookingDetails', {
+                serviceName,
+                status: item.status,
+                scheduledAt: item.scheduled_at,
+                durationMinutes: item.duration_minutes,
+                totalAmount: item.total_amount,
+                address: addressText,
+                workerName,
+                paymentMethod,
+            });
+        };
+
         return (
-            <View style={styles.bookingCard}>
+            <TouchableOpacity
+                style={styles.bookingCard}
+                onPress={handlePress}
+                activeOpacity={0.7}
+            >
                 <View style={styles.cardHeader}>
-                    <Text style={styles.serviceName} numberOfLines={1}>{item.service_name}</Text>
+                    <Text style={styles.serviceName} numberOfLines={1}>{serviceName}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
                         <Text style={[styles.statusText, { color: statusColor.text }]}>
-                            {item.status}
+                            {formatStatus(item.status)}
                         </Text>
                     </View>
                 </View>
                 <View style={styles.cardDetails}>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailIcon}>📅</Text>
-                        <Text style={styles.detailText}>{formatDate(item.booking_date)}</Text>
+                        <Text style={styles.detailText}>{formatDate(item.scheduled_at)}</Text>
                     </View>
-                    {item.booking_time ? (
-                        <View style={styles.detailRow}>
-                            <Text style={styles.detailIcon}>🕐</Text>
-                            <Text style={styles.detailText}>{item.booking_time}</Text>
-                        </View>
-                    ) : null}
-                    {item.duration ? (
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailIcon}>🕐</Text>
+                        <Text style={styles.detailText}>{formatTime(item.scheduled_at)}</Text>
+                    </View>
+                    {item.duration_minutes ? (
                         <View style={styles.detailRow}>
                             <Text style={styles.detailIcon}>⏱️</Text>
-                            <Text style={styles.detailText}>{item.duration}h</Text>
+                            <Text style={styles.detailText}>
+                                {item.duration_minutes >= 60
+                                    ? `${Math.floor(item.duration_minutes / 60)}h${item.duration_minutes % 60 > 0 ? ` ${item.duration_minutes % 60}m` : ''}`
+                                    : `${item.duration_minutes}m`}
+                            </Text>
+                        </View>
+                    ) : null}
+                    {item.total_amount ? (
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailIcon}>💰</Text>
+                            <Text style={styles.detailText}>₹{item.total_amount}</Text>
                         </View>
                     ) : null}
                 </View>
-                {item.address ? (
+                {addressText ? (
                     <View style={styles.addressRow}>
                         <Text style={styles.detailIcon}>📍</Text>
-                        <Text style={styles.addressText} numberOfLines={1}>{item.address}</Text>
+                        <Text style={styles.addressText} numberOfLines={1}>{addressText}</Text>
                     </View>
                 ) : null}
-            </View>
+            </TouchableOpacity>
         );
     };
 

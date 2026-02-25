@@ -27,7 +27,7 @@ export function ProfileScreen(): React.JSX.Element {
 
     const MENU_ITEMS = [
         { id: '1', title: 'Your Experts', icon: '👥', route: 'YourExperts' },
-        { id: '2', title: 'Saved Addresses', icon: '🏠' },
+        { id: '2', title: 'Saved Addresses', icon: '🏠', route: 'SavedAddress' },
         { id: '3', title: 'Manage Account', icon: '⚙️' },
     ];
 
@@ -125,17 +125,6 @@ export function ProfileScreen(): React.JSX.Element {
                         </TouchableOpacity>
                     ))}
                 </View>
-
-                {/* Add New Address Section */}
-                <TouchableOpacity style={styles.addAddressButton}>
-                    <View style={styles.addAddressContent}>
-                        <View style={styles.addAddressIconContainer}>
-                            <Text style={styles.addAddressIcon}>📍</Text>
-                        </View>
-                        <Text style={styles.addAddressText}>Add New Address</Text>
-                    </View>
-                    <Text style={styles.addAddressPlus}>+</Text>
-                </TouchableOpacity>
 
                 {/* Sign Out Button */}
                 <TouchableOpacity style={styles.signOutButton} onPress={handleLogout}>

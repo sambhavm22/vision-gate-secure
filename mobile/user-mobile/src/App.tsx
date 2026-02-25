@@ -11,6 +11,7 @@ import { ActivityIndicator, StatusBar, Text, View } from 'react-native';
 
 import { useUser } from './hooks/useUser';
 import {
+    BookingDetailsScreen,
     BookingScreen,
     DurationSelectionScreen,
     HomeScreen,
@@ -18,6 +19,7 @@ import {
     MyBookingsScreen,
     OTPScreen,
     ProfileScreen,
+    SavedAddressScreen,
     ScheduleScreen,
     SupportScreen,
     WalletScreen,
@@ -49,6 +51,17 @@ export type RootStackParamList = {
     Support: undefined;
     Wallet: undefined;
     YourExperts: undefined;
+    SavedAddress: undefined;
+    BookingDetails: {
+        serviceName: string;
+        status: string;
+        scheduledAt: string;
+        durationMinutes: number | null;
+        totalAmount: number | null;
+        address: string | null;
+        workerName: string | null;
+        paymentMethod: string | null;
+    };
 };
 
 export type MainTabParamList = {
@@ -156,6 +169,16 @@ function App(): React.JSX.Element {
                         <Stack.Screen
                             name="YourExperts"
                             component={YourExpertsScreen}
+                            options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="SavedAddress"
+                            component={SavedAddressScreen}
+                            options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="BookingDetails"
+                            component={BookingDetailsScreen}
                             options={{ headerShown: false }}
                         />
                     </>

@@ -11,7 +11,9 @@ export { ProfileScreen } from './ProfileScreen';
 export { ScheduleScreen } from './ScheduleScreen';
 export { SupportScreen } from './SupportScreen';
 
+export { BookingDetailsScreen } from './BookingDetailsScreen';
 export { DurationSelectionScreen } from './DurationSelectionScreen';
+export { SavedAddressScreen } from './SavedAddressScreen';
 export { WalletScreen } from './WalletScreen';
 export { YourExpertsScreen } from './YourExpertsScreen';
 
