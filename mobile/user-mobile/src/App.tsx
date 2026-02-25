@@ -7,7 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { ActivityIndicator, StatusBar, Text, View } from 'react-native';
+import { StatusBar, Text } from 'react-native';
 
 import { useUser } from './hooks/useUser';
 import {
@@ -21,6 +21,7 @@ import {
     ProfileScreen,
     SavedAddressScreen,
     ScheduleScreen,
+    SplashScreen,
     SupportScreen,
     WalletScreen,
     YourExpertsScreen,
@@ -53,6 +54,7 @@ export type RootStackParamList = {
     YourExperts: undefined;
     SavedAddress: undefined;
     BookingDetails: {
+        bookingId: string;
         serviceName: string;
         status: string;
         scheduledAt: string;
@@ -122,11 +124,7 @@ function App(): React.JSX.Element {
     };
 
     if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDarkMode ? '#0f172a' : '#fff' }}>
-                <ActivityIndicator size="large" color="#10b981" />
-            </View>
-        );
+        return <SplashScreen />;
     }
 
     return (

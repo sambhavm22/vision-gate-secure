@@ -90,7 +90,25 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
             // 2. Determine scheduled_at
             let scheduledAt: string;
             if (bookingType === 'prebook' && date && time) {
-                scheduledAt = new Date(`${date}T${time}`).toISOString();
+                // Extract YYYY-MM-DD from date string (handles both "2026-02-25" and "Starting 2026-02-25 (daily)")
+                const dateMatch = date.match(/(\d{4}-\d{2}-\d{2})/);
+                const rawDate = dateMatch ? dateMatch[1] : null;
+
+                if (rawDate) {
+                    const parsed = new Date(`${rawDate}T${time}`);
+                    if (!isNaN(parsed.getTime())) {
+                        scheduledAt = parsed.toISOString();
+                    } else {
+                        // Fallback: schedule 30 min from now
+                        const fallback = new Date();
+                        fallback.setMinutes(fallback.getMinutes() + 30);
+                        scheduledAt = fallback.toISOString();
+                    }
+                } else {
+                    const fallback = new Date();
+                    fallback.setMinutes(fallback.getMinutes() + 30);
+                    scheduledAt = fallback.toISOString();
+                }
             } else {
                 // For "now" bookings, schedule 30 min from now
                 const now = new Date();
@@ -98,7 +116,13 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                 scheduledAt = now.toISOString();
             }
 
-            // 3. Insert booking
+            // 3. Determine notes (include subscription type if applicable)
+            const subMatch = date?.match(/\((daily|alternate)\)/i);
+            const notesText = subMatch
+                ? `${serviceName} - ${address.label} (Subscription: ${subMatch[1]})`
+                : `${serviceName} - ${address.label}`;
+
+            // 4. Insert booking
             const { error: bookingError } = await supabase
                 .from('bookings')
                 .insert({
@@ -109,7 +133,7 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                     scheduled_at: scheduledAt,
                     duration_minutes: duration ? duration * 60 : 60,
                     total_amount: price || 400,
-                    notes: `${serviceName} - ${address.label}`,
+                    notes: notesText,
                 });
 
             if (bookingError) {

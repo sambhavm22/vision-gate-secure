@@ -6,19 +6,22 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
+    Alert,
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { RootStackParamList } from '../App';
+import { supabase } from '../services/supabase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingDetails'>;
 
 export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.Element {
     const {
+        bookingId,
         serviceName,
         status,
         scheduledAt,
@@ -30,8 +33,44 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
     } = route.params;
 
     const [userRating, setUserRating] = useState(0);
+    const [currentStatus, setCurrentStatus] = useState(status);
+    const [cancelling, setCancelling] = useState(false);
 
-    const isCompleted = status === 'completed' || status === 'paid';
+    const isCompleted = currentStatus === 'completed' || currentStatus === 'paid';
+    const isCancelled = currentStatus === 'cancelled';
+    const isPast = new Date(scheduledAt) < new Date();
+    const canCancel = !isCompleted && !isCancelled && !isPast;
+
+    const handleCancelBooking = () => {
+        Alert.alert(
+            'Cancel Booking',
+            'Are you sure you want to cancel this booking? This action cannot be undone.',
+            [
+                { text: 'Keep Booking', style: 'cancel' },
+                {
+                    text: 'Cancel Booking',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setCancelling(true);
+                        const { error } = await supabase
+                            .from('bookings')
+                            .update({ status: 'cancelled' })
+                            .eq('id', bookingId);
+
+                        setCancelling(false);
+                        if (error) {
+                            Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+                        } else {
+                            setCurrentStatus('cancelled');
+                            Alert.alert('Booking Cancelled', 'Your booking has been cancelled successfully.', [
+                                { text: 'OK', onPress: () => navigation.goBack() },
+                            ]);
+                        }
+                    },
+                },
+            ]
+        );
+    };
 
     // Format date
     const formatDate = (dateStr: string) => {
@@ -79,7 +118,7 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
     };
 
     const getStatusLabel = () => {
-        switch (status) {
+        switch (currentStatus) {
             case 'completed':
             case 'paid':
                 return 'Service Completed';
@@ -100,7 +139,7 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
     };
 
     const getHeaderColor = () => {
-        switch (status) {
+        switch (currentStatus) {
             case 'completed':
             case 'paid':
                 return '#16a34a';
@@ -115,7 +154,7 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
     };
 
     const getHeaderIcon = () => {
-        switch (status) {
+        switch (currentStatus) {
             case 'completed':
             case 'paid':
                 return '✓';
@@ -286,6 +325,23 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
                         </View>
                         <Text style={styles.actionChevron}>›</Text>
                     </TouchableOpacity>
+
+                    {/* Cancel Booking */}
+                    {canCancel && (
+                        <>
+                            <View style={styles.dividerThin} />
+                            <TouchableOpacity
+                                style={styles.cancelButton}
+                                onPress={handleCancelBooking}
+                                disabled={cancelling}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.cancelButtonText}>
+                                    {cancelling ? 'Cancelling...' : 'Cancel Booking'}
+                                </Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </ScrollView>
             </View>
         </SafeAreaView>
@@ -570,5 +626,17 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#10b981',
+    },
+    cancelButton: {
+        backgroundColor: '#dc2626',
+        borderRadius: 14,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginTop: 20,
+    },
+    cancelButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

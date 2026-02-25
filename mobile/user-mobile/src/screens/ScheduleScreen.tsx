@@ -41,6 +41,11 @@ export function ScheduleScreen(): React.JSX.Element {
     // Subscription State
     const [subType, setSubType] = useState<'daily' | 'alternate'>('daily');
     const [isIndefinite, setIsIndefinite] = useState(false);
+    const [subViewMonth, setSubViewMonth] = useState(currentMonth);
+    const [subViewYear, setSubViewYear] = useState(currentYear);
+    const [subSelectedDate, setSubSelectedDate] = useState(currentDay);
+    const [showSubDatePicker, setShowSubDatePicker] = useState(false);
+    const [showSubTimePicker, setShowSubTimePicker] = useState(false);
 
     const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -145,7 +150,7 @@ export function ScheduleScreen(): React.JSX.Element {
             duration: scheduledDuration,
             date: scheduleTab === 'single'
                 ? formatDateISO(selectedDate)
-                : `Starting ${formatDateISO(selectedDate)} (${subType})`,
+                : `Starting ${subViewYear}-${String(subViewMonth + 1).padStart(2, '0')}-${String(subSelectedDate).padStart(2, '0')} (${subType})`,
             time: timeToUse,
             price: 400
         });
@@ -315,40 +320,150 @@ export function ScheduleScreen(): React.JSX.Element {
                             </View>
 
                             {/* Dates */}
-                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>Start Date</Text>
-                                    <View style={[styles.inputField, isDarkMode && styles.darkInputField]}>
-                                        <Text style={[styles.inputText, isDarkMode && styles.darkText]}>11/02/2026</Text>
-                                        <Text>📅</Text>
+                            <View style={{ marginBottom: 24 }}>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>Start Date</Text>
+                                        <TouchableOpacity
+                                            style={[styles.inputField, isDarkMode && styles.darkInputField]}
+                                            onPress={() => setShowSubDatePicker(!showSubDatePicker)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[styles.inputText, isDarkMode && styles.darkText]}>
+                                                {String(subSelectedDate).padStart(2, '0')}/{String(subViewMonth + 1).padStart(2, '0')}/{subViewYear}
+                                            </Text>
+                                            <Text>📅</Text>
+                                        </TouchableOpacity>
                                     </View>
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                        <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted, { marginBottom: 0 }]}>End Date</Text>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                            <TouchableOpacity
-                                                onPress={() => setIsIndefinite(!isIndefinite)}
-                                                style={[styles.checkbox, isIndefinite && styles.checkboxActive]}
-                                            >
-                                                {isIndefinite && <Text style={{ color: '#0f172a', fontSize: 10, fontWeight: 'bold' }}>✓</Text>}
-                                            </TouchableOpacity>
-                                            <Text style={{ fontSize: 10, color: isDarkMode ? '#94a3b8' : '#64748b' }}>As long as I wish</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                            <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted, { marginBottom: 0 }]}>End Date</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                <TouchableOpacity
+                                                    onPress={() => setIsIndefinite(!isIndefinite)}
+                                                    style={[styles.checkbox, isIndefinite && styles.checkboxActive]}
+                                                >
+                                                    {isIndefinite && <Text style={{ color: '#0f172a', fontSize: 10, fontWeight: 'bold' }}>✓</Text>}
+                                                </TouchableOpacity>
+                                                <Text style={{ fontSize: 10, color: isDarkMode ? '#94a3b8' : '#64748b' }}>As long as I wish</Text>
+                                            </View>
+                                        </View>
+                                        <View style={[styles.inputField, isDarkMode && styles.darkInputField, isIndefinite && { opacity: 0.5 }]}>
+                                            <Text style={[styles.inputText, isDarkMode && styles.darkText]}>{isIndefinite ? ' - ' : 'dd/mm/yyyy'}</Text>
+                                            <Text>📅</Text>
                                         </View>
                                     </View>
-                                    <View style={[styles.inputField, isDarkMode && styles.darkInputField, isIndefinite && { opacity: 0.5 }]}>
-                                        <Text style={[styles.inputText, isDarkMode && styles.darkText]}>{isIndefinite ? ' - ' : 'dd/mm/yyyy'}</Text>
-                                        <Text>📅</Text>
-                                    </View>
                                 </View>
+
+                                {/* Inline Date Picker */}
+                                {showSubDatePicker && (
+                                    <View style={[styles.card, isDarkMode && styles.darkCard, { marginTop: 12 }]}>
+                                        <View style={styles.monthNav}>
+                                            <TouchableOpacity
+                                                style={[styles.navArrow, !(subViewYear > currentYear || (subViewYear === currentYear && subViewMonth > currentMonth)) && { opacity: 0.3 }]}
+                                                onPress={() => {
+                                                    if (subViewYear > currentYear || (subViewYear === currentYear && subViewMonth > currentMonth)) {
+                                                        if (subViewMonth === 0) { setSubViewMonth(11); setSubViewYear(subViewYear - 1); }
+                                                        else { setSubViewMonth(subViewMonth - 1); }
+                                                    }
+                                                }}
+                                                disabled={!(subViewYear > currentYear || (subViewYear === currentYear && subViewMonth > currentMonth))}
+                                            >
+                                                <Text style={styles.navArrowText}>{'<'}</Text>
+                                            </TouchableOpacity>
+                                            <Text style={[styles.monthText, isDarkMode && styles.darkText]}>
+                                                {MONTH_NAMES[subViewMonth]} {subViewYear}
+                                            </Text>
+                                            <TouchableOpacity
+                                                style={styles.navArrow}
+                                                onPress={() => {
+                                                    if (subViewMonth === 11) { setSubViewMonth(0); setSubViewYear(subViewYear + 1); }
+                                                    else { setSubViewMonth(subViewMonth + 1); }
+                                                }}
+                                            >
+                                                <Text style={styles.navArrowText}>{'>'}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.daysHeader}>
+                                            {WEEKDAYS.map(d => (
+                                                <Text key={d} style={styles.dayHeaderText}>{d}</Text>
+                                            ))}
+                                        </View>
+                                        <View style={styles.daysGrid}>
+                                            {Array.from({ length: getFirstDayOfMonth(subViewYear, subViewMonth) }, (_, i) => (
+                                                <View key={`sb-${i}`} style={styles.dayCell} />
+                                            ))}
+                                            {Array.from({ length: getDaysInMonth(subViewYear, subViewMonth) }, (_, i) => i + 1).map(day => {
+                                                const past = (subViewYear < currentYear) ||
+                                                    (subViewYear === currentYear && subViewMonth < currentMonth) ||
+                                                    (subViewYear === currentYear && subViewMonth === currentMonth && day < currentDay);
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={day}
+                                                        style={[
+                                                            styles.dayCell,
+                                                            subSelectedDate === day && subViewMonth === subViewMonth && !past && styles.selectedDayCell,
+                                                            past && { opacity: 0.3 },
+                                                        ]}
+                                                        onPress={() => { if (!past) { setSubSelectedDate(day); setShowSubDatePicker(false); } }}
+                                                        disabled={!!past}
+                                                    >
+                                                        <Text style={[
+                                                            styles.dayText,
+                                                            isDarkMode && styles.darkTextMuted,
+                                                            subSelectedDate === day && !past && styles.selectedDayText,
+                                                        ]}>{day}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                )}
                             </View>
 
                             {/* Preferred Time */}
                             <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>Preferred Time</Text>
-                            <View style={[styles.inputField, isDarkMode && styles.darkInputField, { marginBottom: 24 }]}>
-                                <Text style={[styles.inputText, isDarkMode && styles.darkText]}>10:00 AM</Text>
+                            <TouchableOpacity
+                                style={[styles.inputField, isDarkMode && styles.darkInputField, { marginBottom: showSubTimePicker ? 0 : 24 }]}
+                                onPress={() => setShowSubTimePicker(!showSubTimePicker)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.inputText, isDarkMode && styles.darkText]}>
+                                    {selectedTime ? `${parseInt(selectedTime.split(':')[0], 10) > 12 ? parseInt(selectedTime.split(':')[0], 10) - 12 : selectedTime.split(':')[0]}:${selectedTime.split(':')[1]} ${parseInt(selectedTime.split(':')[0], 10) >= 12 ? 'PM' : 'AM'}` : 'Select a time'}
+                                </Text>
                                 <Text>🕒</Text>
-                            </View>
+                            </TouchableOpacity>
+
+                            {/* Inline Time Picker */}
+                            {showSubTimePicker && (
+                                <View style={{ marginTop: 12, marginBottom: 24 }}>
+                                    <View style={styles.timeGrid}>
+                                        {TIME_SLOTS.map(time => {
+                                            const isSubToday = subViewYear === currentYear && subViewMonth === currentMonth && subSelectedDate === currentDay;
+                                            const past = isSubToday && parseInt(time.split(':')[0], 10) <= currentHour;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={time}
+                                                    style={[
+                                                        styles.timeSlot,
+                                                        isDarkMode && styles.darkTimeSlot,
+                                                        selectedTime === time && !past && styles.selectedTimeSlot,
+                                                        past && { opacity: 0.3 },
+                                                    ]}
+                                                    onPress={() => { if (!past) { setSelectedTime(time); setShowSubTimePicker(false); } }}
+                                                    disabled={past}
+                                                >
+                                                    <Text style={[
+                                                        styles.timeText,
+                                                        isDarkMode && styles.darkText,
+                                                        selectedTime === time && !past && styles.selectedTimeText,
+                                                    ]}>{time}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            )}
 
                             {/* Duration */}
                             <Text style={[styles.inputLabel, isDarkMode && styles.darkTextMuted]}>Duration (Hours)</Text>
@@ -374,25 +489,19 @@ export function ScheduleScreen(): React.JSX.Element {
                 {/* Summary Footer */}
                 <View style={styles.footer}>
                     <View style={[styles.summaryContainer, isDarkMode && styles.darkSummaryContainer]}>
-                        <View style={styles.summaryItem}>
-                            <View style={styles.summaryIcon}>
-                                <Text style={{ fontSize: 20 }}>📅</Text>
-                            </View>
-                            <View>
-                                <Text style={styles.summaryLabel}>
-                                    {scheduleTab === 'single' ? 'Selected Schedule' : 'Selected Subscription'}
-                                </Text>
-                                <Text style={[styles.summaryValue, isDarkMode && styles.darkSummaryText]}>
-                                    {scheduleTab === 'single'
-                                        ? `${DAY_NAMES[new Date(viewYear, viewMonth, selectedDate).getDay()]}, ${selectedDate} ${MONTH_NAMES[viewMonth].slice(0, 3)} at ${selectedTime || '--:--'}`
-                                        : `${subType} from ${selectedDate} ${MONTH_NAMES[viewMonth].slice(0, 3)} ${viewYear} at ${selectedTime || '--:--'}`
-                                    }
-                                </Text>
-                            </View>
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={styles.summaryLabel}>Duration</Text>
-                            <Text style={[styles.summaryValue, isDarkMode && styles.darkSummaryText]}>{scheduledDuration} Hrs</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.summaryLabel}>
+                                {scheduleTab === 'single' ? 'SELECTED SCHEDULE' : 'SELECTED SUBSCRIPTION'}
+                            </Text>
+                            <Text style={[styles.summaryValue, isDarkMode && styles.darkSummaryText]} numberOfLines={2}>
+                                {scheduleTab === 'single'
+                                    ? `${DAY_NAMES[new Date(viewYear, viewMonth, selectedDate).getDay()]}, ${selectedDate} ${MONTH_NAMES[viewMonth].slice(0, 3)}`
+                                    : `${subType.charAt(0).toUpperCase() + subType.slice(1)} from ${subSelectedDate} ${MONTH_NAMES[subViewMonth].slice(0, 3)}`
+                                }
+                            </Text>
+                            <Text style={[styles.summarySubValue, isDarkMode && styles.darkSummaryText]}>
+                                {`at ${selectedTime || '--:--'} • ${scheduledDuration} Hrs`}
+                            </Text>
                         </View>
                     </View>
 
@@ -624,9 +733,6 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
     },
     summaryItem: {
         flexDirection: 'row',
@@ -643,14 +749,21 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         color: '#9ca3af',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: 'bold',
         textTransform: 'uppercase',
+        marginBottom: 4,
     },
     summaryValue: {
         color: '#1f2937',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    summarySubValue: {
+        color: '#6b7280',
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 2,
     },
     proceedButton: {
         backgroundColor: '#10b981', // or match your theme (maybe needs to be darker/prominent)

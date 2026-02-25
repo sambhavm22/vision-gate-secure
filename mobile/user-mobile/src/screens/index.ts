@@ -14,6 +14,7 @@ export { SupportScreen } from './SupportScreen';
 export { BookingDetailsScreen } from './BookingDetailsScreen';
 export { DurationSelectionScreen } from './DurationSelectionScreen';
 export { SavedAddressScreen } from './SavedAddressScreen';
+export { SplashScreen } from './SplashScreen';
 export { WalletScreen } from './WalletScreen';
 export { YourExpertsScreen } from './YourExpertsScreen';
 

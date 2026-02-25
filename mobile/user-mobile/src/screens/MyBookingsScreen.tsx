@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     RefreshControl,
     SafeAreaView,
@@ -147,6 +148,7 @@ export function MyBookingsScreen(): React.JSX.Element {
             const workerName = item.workers_public?.full_name || null;
             const paymentMethod = item.transactions?.find(t => t.status === 'success')?.payment_method || null;
             navigation.navigate('BookingDetails', {
+                bookingId: item.id,
                 serviceName,
                 status: item.status,
                 scheduledAt: item.scheduled_at,
@@ -204,6 +206,42 @@ export function MyBookingsScreen(): React.JSX.Element {
                         <Text style={styles.addressText} numberOfLines={1}>{addressText}</Text>
                     </View>
                 ) : null}
+
+                {/* Cancel button for upcoming / active bookings */}
+                {filterTab === 'upcoming' && item.status !== 'cancelled' && item.status !== 'completed' && item.status !== 'paid' && (
+                    <TouchableOpacity
+                        style={styles.cancelCardButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            Alert.alert(
+                                'Cancel Booking',
+                                'Are you sure you want to cancel this booking?',
+                                [
+                                    { text: 'No', style: 'cancel' },
+                                    {
+                                        text: 'Yes, Cancel',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                            const { error } = await supabase
+                                                .from('bookings')
+                                                .update({ status: 'cancelled' })
+                                                .eq('id', item.id);
+                                            if (error) {
+                                                Alert.alert('Error', 'Failed to cancel booking.');
+                                            } else {
+                                                Alert.alert('Cancelled', 'Booking has been cancelled.');
+                                                fetchBookings();
+                                            }
+                                        },
+                                    },
+                                ]
+                            );
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.cancelCardButtonText}>Cancel Booking</Text>
+                    </TouchableOpacity>
+                )}
             </TouchableOpacity>
         );
     };
@@ -516,5 +554,17 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 14,
+    },
+    cancelCardButton: {
+        borderTopWidth: 1,
+        borderTopColor: '#334155',
+        marginTop: 12,
+        paddingTop: 12,
+        alignItems: 'center',
+    },
+    cancelCardButtonText: {
+        color: '#ef4444',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
