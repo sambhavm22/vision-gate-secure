@@ -78,6 +78,44 @@ export function MyBookingsScreen(): React.JSX.Element {
         fetchBookings();
     }, [fetchBookings]);
 
+    // Real-time subscription: auto-refresh when booking status changes
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel('user-bookings-realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'bookings',
+                    filter: `customer_id=eq.${user.id}`,
+                },
+                () => {
+                    // Auto-refresh bookings when any booking for this user is updated
+                    fetchBookings();
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'bookings',
+                    filter: `customer_id=eq.${user.id}`,
+                },
+                () => {
+                    fetchBookings();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, fetchBookings]);
+
     const handleRefresh = () => {
         setRefreshing(true);
         fetchBookings();

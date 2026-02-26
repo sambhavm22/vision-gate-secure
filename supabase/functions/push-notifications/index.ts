@@ -10,7 +10,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Sending notification to user ${user_id}: ${title} - ${body}`);
 
-    // 1. Fetch tokens for the user
+    // 1. Fetch Expo push tokens for the user
     const { data: devices, error: fetchError } = await supabase
         .from('user_devices')
         .select('device_token, platform')
@@ -26,33 +26,70 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ success: true, message: 'No devices found' }), { status: 200 });
     }
 
-    // 2. Send push to each device (Placeholder for FCM/Expo/WebPush)
-    const notifications = devices.map(async (device) => {
-        console.log(`[PUSH] To user: ${user_id}, Platform: ${device.platform}, Token: ${device.device_token}`);
+    // 2. Filter valid Expo push tokens
+    const expoPushTokens = devices
+        .map(d => d.device_token)
+        .filter(token => token && (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')));
 
-        // TODO: Implement actual FCM or Expo Push here
-        /*
-        const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+    if (expoPushTokens.length === 0) {
+        console.log(`No valid Expo push tokens for user ${user_id}`);
+        return new Response(JSON.stringify({ success: true, message: 'No valid Expo tokens' }), { status: 200 });
+    }
+
+    // 3. Build Expo push messages
+    const messages = expoPushTokens.map(token => ({
+        to: token,
+        sound: 'default',
+        title: title,
+        body: body,
+        data: data || {},
+        priority: 'high',
+    }));
+
+    // 4. Send via Expo Push API
+    try {
+        const response = await fetch('https://exp.host/--/api/v2/push/send', {
             method: 'POST',
             headers: {
+                'Accept': 'application/json',
+                'Accept-Encoding': 'gzip, deflate',
                 'Content-Type': 'application/json',
-                'Authorization': `key=${Deno.env.get('FCM_SERVER_KEY')}`
             },
-            body: JSON.stringify({
-                to: device.device_token,
-                notification: { title, body },
-                data: data
-            })
+            body: JSON.stringify(messages),
         });
-        */
 
-        return { token: device.device_token, status: 'sent_mock' };
-    });
+        const result = await response.json();
+        console.log('Expo Push API response:', JSON.stringify(result));
 
-    const results = await Promise.all(notifications);
+        // Handle ticket errors (invalid tokens)
+        if (result.data) {
+            for (const ticket of result.data) {
+                if (ticket.status === 'error') {
+                    console.error(`Push error for token: ${ticket.message}`);
+                    // If token is invalid, remove from database
+                    if (ticket.details?.error === 'DeviceNotRegistered') {
+                        const badToken = messages.find((_m, i) => result.data[i] === ticket)?.to;
+                        if (badToken) {
+                            await supabase
+                                .from('user_devices')
+                                .delete()
+                                .eq('device_token', badToken);
+                            console.log(`Removed invalid token: ${badToken}`);
+                        }
+                    }
+                }
+            }
+        }
 
-    return new Response(JSON.stringify({ success: true, results }), {
-        headers: { 'Content-Type': 'application/json' },
-        status: 200
-    });
+        return new Response(JSON.stringify({ success: true, results: result }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+        });
+    } catch (pushError) {
+        console.error('Expo Push API error:', pushError);
+        return new Response(JSON.stringify({ error: 'Failed to send push notification' }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 500,
+        });
+    }
 });

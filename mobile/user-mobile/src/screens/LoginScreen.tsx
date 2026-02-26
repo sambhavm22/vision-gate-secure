@@ -91,7 +91,8 @@ export function LoginScreen({ navigation }: LoginScreenProps): React.JSX.Element
             // In Expo Go: exp://192.168.x.x:8082/--/login-callback
             // In Dev Build: user-mobile://login-callback
             const redirectUrl = makeRedirectUri({
-                path: 'login-callback',
+                // @ts-ignore - explicitly requested proxy configuration for Expo Go
+                useProxy: true,
             });
 
             const { data, error } = await supabase.auth.signInWithOAuth({

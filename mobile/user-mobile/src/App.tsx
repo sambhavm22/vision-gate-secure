@@ -9,6 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { StatusBar, Text } from 'react-native';
 
+import { useNotifications } from './hooks/useNotifications';
 import { useUser } from './hooks/useUser';
 import {
     BookingDetailsScreen,
@@ -116,8 +117,11 @@ function MainTabs() {
 }
 
 function App(): React.JSX.Element {
+    const { user, session, loading } = useUser();
     const isDarkMode = true; // Use Dark Mode by default
-    const { session, loading } = useUser();
+
+    // Register for push notifications silently (no UI change)
+    useNotifications(user?.id ?? null);
 
     const handleAuthSuccess = () => {
         // Session change handles navigation
