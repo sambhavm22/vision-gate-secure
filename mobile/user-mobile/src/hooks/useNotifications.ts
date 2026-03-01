@@ -82,12 +82,12 @@ async function registerForPushNotifications(userId: string): Promise<void> {
     }
 
     try {
-        // For bare workflows/local dev without EAS configured, a projectId must be passed.
-        // We attempt to get it from Constants.expoConfig.extra.eas.projectId,
-        // and fallback to a dummy UUID just to satisfy the API locally.
-        const projectId =
-            Constants.expoConfig?.extra?.eas?.projectId ??
-            '00000000-0000-0000-0000-000000000000';
+        // A valid EAS projectId is required to fetch an Expo push token.
+        // In Expo Go / local dev without EAS configured, skip silently.
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        if (!projectId) {
+            return;
+        }
 
         const tokenData = await Notifications.getExpoPushTokenAsync({
             projectId,
