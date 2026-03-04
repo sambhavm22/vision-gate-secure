@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useLocation } from '../hooks/useLocation';
 import { useNotifications } from '../hooks/useNotifications';
 import { useUser } from '../hooks/useUser';
 import { supabase } from '../services/supabase';
@@ -44,6 +45,15 @@ export function DashboardScreen(): React.JSX.Element {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
+
+    // Location — requests GPS permission, saves to workers_public.location
+    const {
+        latitude,
+        longitude,
+        loading: locationLoading,
+        error: locationError,
+        refreshLocation,
+    } = useLocation(workerProfile?.id ?? null, isOnline);
 
     // Filter States
     const [sortBy, setSortBy] = useState<'earliest' | 'closest'>('earliest');
@@ -129,16 +139,36 @@ export function DashboardScreen(): React.JSX.Element {
         fetchBookings().finally(() => setLoading(false));
     }, [fetchBookings, fetchStats]);
 
-    // Real-time subscriptions
+    // Real-time subscriptions — bookings + notifications
     useEffect(() => {
-        if (!workerProfile || !isOnline) return;
+        if (!workerProfile) return;
 
         const channel = supabase
-            .channel('worker-bookings')
+            .channel('worker-dashboard-realtime')
+            // Listen for all booking changes (new requests, status updates, cancellations)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
                 fetchBookings();
                 fetchStats();
             })
+            // Listen for new notifications targeted at this worker (in-app alert)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${workerProfile.id}`,
+                },
+                (payload: any) => {
+                    const n = payload.new;
+                    if (n?.title && n?.message) {
+                        Alert.alert(n.title, n.message);
+                    }
+                    // Also refresh bookings since a notification usually means a new/changed booking
+                    fetchBookings();
+                    fetchStats();
+                }
+            )
             .subscribe();
 
         return () => {
@@ -303,15 +333,19 @@ export function DashboardScreen(): React.JSX.Element {
                 <Text style={styles.summarySubtitle}>Visible to customers</Text>
             </View>
 
-            {/* New Opportunities */}
-            <View style={styles.summaryCard}>
+            {/* Location Status */}
+            <TouchableOpacity style={styles.summaryCard} onPress={refreshLocation} activeOpacity={0.7}>
                 <View style={styles.cardHeaderRow}>
-                    <Text style={[styles.summaryTitle, { color: '#34d399' }]}>New Opportunities</Text>
-                    <Text style={styles.summaryIcon}>📈</Text>
+                    <Text style={[styles.summaryTitle, { color: latitude ? '#34d399' : '#fbbf24' }]}>Location</Text>
+                    <Text style={styles.summaryIcon}>{locationLoading ? '⏳' : latitude ? '�' : '⚠️'}</Text>
                 </View>
-                <Text style={[styles.summaryValue, { color: '#34d399' }]}>{bookingRequests.length}</Text>
-                <Text style={styles.summarySubtitle}>Jobs available nearby</Text>
-            </View>
+                <Text style={[styles.summaryValue, { fontSize: 16, color: latitude ? '#34d399' : '#fbbf24' }]}>
+                    {locationLoading ? 'Detecting...' : latitude ? '✓ Detected' : 'Tap to enable'}
+                </Text>
+                <Text style={styles.summarySubtitle}>
+                    {latitude ? `${latitude.toFixed(4)}, ${longitude?.toFixed(4)}` : locationError || 'Required for bookings'}
+                </Text>
+            </TouchableOpacity>
         </View>
     );
 

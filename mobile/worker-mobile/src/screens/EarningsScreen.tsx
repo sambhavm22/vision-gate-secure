@@ -23,7 +23,8 @@ interface EarningsSummary {
 
 interface CompletedJob {
     id: string;
-    service_name: string;
+    services: any;
+    service_name?: string;
     total_amount: number;
     scheduled_at: string;
     created_at: string;
@@ -66,7 +67,7 @@ export function EarningsScreen(): React.JSX.Element {
             // Fetch completed bookings
             let query = supabase
                 .from('bookings')
-                .select('id, service_name, total_amount, scheduled_at, created_at')
+                .select('id, total_amount, scheduled_at, created_at, services(name)')
                 .eq('worker_id', workerProfile.id)
                 .eq('status', 'completed')
                 .order('scheduled_at', { ascending: false });
@@ -79,7 +80,10 @@ export function EarningsScreen(): React.JSX.Element {
             const { data, error } = await query;
             if (error) throw error;
 
-            const jobs = data || [];
+            const jobs = (data || []).map((j: any) => ({
+                ...j,
+                service_name: j.services?.name || (Array.isArray(j.services) ? j.services[0]?.name : '') || 'Service',
+            }));
             const totalEarnings = jobs.reduce((sum, j) => sum + (j.total_amount || 0), 0);
 
             setRecentJobs(jobs);
@@ -192,7 +196,7 @@ export function EarningsScreen(): React.JSX.Element {
                             recentJobs.slice(0, 10).map((job) => (
                                 <View key={job.id} style={styles.jobRow}>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={styles.jobName}>{job.service_name}</Text>
+                                        <Text style={styles.jobName}>{job.service_name || 'Service'}</Text>
                                         <Text style={styles.jobDate}>{formatDate(job.scheduled_at)}</Text>
                                     </View>
                                     <Text style={styles.jobAmount}>₹{job.total_amount || 0}</Text>

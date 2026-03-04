@@ -15,6 +15,8 @@ interface LocationAddress {
 
 interface UseLocationReturn {
     address: LocationAddress | null;
+    latitude: number | null;
+    longitude: number | null;
     loading: boolean;
     error: string | null;
     getCurrentLocation: () => Promise<LocationAddress | null>;
@@ -30,6 +32,8 @@ interface UseLocationReturn {
  */
 export function useLocation(): UseLocationReturn {
     const [address, setAddress] = useState<LocationAddress | null>(null);
+    const [latitude, setLatitude] = useState<number | null>(null);
+    const [longitude, setLongitude] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +61,10 @@ export function useLocation(): UseLocationReturn {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
             });
+
+            // Store raw coordinates
+            setLatitude(position.coords.latitude);
+            setLongitude(position.coords.longitude);
 
             if (geocoded) {
                 const locationAddress: LocationAddress = {
@@ -89,5 +97,5 @@ export function useLocation(): UseLocationReturn {
         }
     };
 
-    return { address, loading, error, getCurrentLocation };
+    return { address, latitude, longitude, loading, error, getCurrentLocation };
 }
