@@ -49,9 +49,9 @@ export function LoginScreen({ navigation }: Props): React.JSX.Element {
     const handleGoogleLogin = async () => {
         try {
             const redirectUrl = makeRedirectUri({
-                // @ts-ignore - explicitly requested proxy configuration for Expo Go
-                useProxy: true,
+                native: 'worker-mobile://login-callback',
             });
+
             console.log('\n--- SUPABASE OAUTH CONFIG ---');
             console.log('Add this exact URL to your Supabase Auth Redirect URIs list:');
             console.log(redirectUrl);

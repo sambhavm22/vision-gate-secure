@@ -37,7 +37,13 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
     const [loading, setLoading] = useState(false);
 
     // expo-location hook for cross-platform location fetching
-    const { loading: fetchingLocation, error: locationError, getCurrentLocation } = useLocation();
+    const {
+        loading: fetchingLocation,
+        error: locationError,
+        latitude: userLat,
+        longitude: userLng,
+        getCurrentLocation,
+    } = useLocation();
 
     const handleUseCurrentLocation = async () => {
         // Uses expo-location — works on Expo Go, iOS Simulator, and Android Emulator
@@ -167,6 +173,10 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                     duration_minutes: duration ? duration * 60 : 60,
                     total_amount: price || 400,
                     notes: notesText,
+                    // Include GPS location for nearby worker matching
+                    ...(userLat && userLng
+                        ? { location: `POINT(${userLng} ${userLat})` }
+                        : {}),
                 });
 
             if (bookingError) {

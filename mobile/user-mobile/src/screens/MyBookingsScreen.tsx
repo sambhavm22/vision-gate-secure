@@ -109,6 +109,23 @@ export function MyBookingsScreen(): React.JSX.Element {
                     fetchBookings();
                 }
             )
+            // Listen for new notifications targeted at this user (in-app alert)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload: any) => {
+                    const n = payload.new;
+                    if (n?.title && n?.message) {
+                        Alert.alert(n.title, n.message);
+                    }
+                    fetchBookings();
+                }
+            )
             .subscribe();
 
         return () => {

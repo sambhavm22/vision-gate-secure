@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -13,6 +13,9 @@ import {
 import { useUser } from '../hooks/useUser';
 import { supabase } from '../services/supabase';
 
+// Available services fetched from the services table
+const ALL_SERVICES = ['Everyday Cleaning', 'Expert Cook', 'Laundry'];
+
 export function ProfileScreen(): React.JSX.Element {
     const { user, workerProfile, refreshProfile } = useUser();
     const [editing, setEditing] = useState(false);
@@ -20,6 +23,51 @@ export function ProfileScreen(): React.JSX.Element {
     const [name, setName] = useState(workerProfile?.full_name || '');
     const [phone, setPhone] = useState(workerProfile?.phone || '');
     const [bio, setBio] = useState(workerProfile?.bio || '');
+    const [selectedServices, setSelectedServices] = useState<string[]>(
+        workerProfile?.service_types || []
+    );
+
+    // Keep local state in sync when workerProfile refreshes
+    useEffect(() => {
+        if (workerProfile) {
+            setName(workerProfile.full_name || '');
+            setPhone(workerProfile.phone || '');
+            setBio(workerProfile.bio || '');
+            setSelectedServices(workerProfile.service_types || []);
+        }
+    }, [workerProfile]);
+
+    // Real-time subscription so online status updates from Dashboard are reflected here
+    useEffect(() => {
+        if (!workerProfile) return;
+        const channel = supabase
+            .channel('profile-status-sync')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'workers_public',
+                    filter: `id=eq.${workerProfile.id}`,
+                },
+                () => {
+                    refreshProfile();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [workerProfile?.id, refreshProfile]);
+
+    const toggleService = (service: string) => {
+        setSelectedServices(prev =>
+            prev.includes(service)
+                ? prev.filter(s => s !== service)
+                : [...prev, service]
+        );
+    };
 
     const handleSave = async () => {
         if (!workerProfile) return;
@@ -31,6 +79,7 @@ export function ProfileScreen(): React.JSX.Element {
                     full_name: name,
                     phone,
                     bio,
+                    service_types: selectedServices,
                 })
                 .eq('id', workerProfile.id);
 
@@ -69,7 +118,7 @@ export function ProfileScreen(): React.JSX.Element {
                             <Text style={styles.editButton}>✏️ Edit</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity onPress={() => setEditing(false)} activeOpacity={0.7}>
+                        <TouchableOpacity onPress={() => { setEditing(false); setSelectedServices(workerProfile?.service_types || []); }} activeOpacity={0.7}>
                             <Text style={styles.cancelButton}>Cancel</Text>
                         </TouchableOpacity>
                     )}
@@ -166,20 +215,53 @@ export function ProfileScreen(): React.JSX.Element {
                             <Text style={styles.fieldValue}>{workerProfile?.bio || '—'}</Text>
                         )}
                     </View>
+                </View>
 
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.fieldLabel}>Services</Text>
-                        <View style={styles.tagsRow}>
-                            {(workerProfile?.service_types || []).map((service, index) => (
-                                <View key={index} style={styles.tag}>
-                                    <Text style={styles.tagText}>{service}</Text>
-                                </View>
-                            ))}
-                            {(!workerProfile?.service_types || workerProfile.service_types.length === 0) && (
-                                <Text style={styles.fieldValue}>No services set</Text>
-                            )}
-                        </View>
+                {/* Services Section */}
+                <View style={styles.formSection}>
+                    <Text style={styles.sectionTitle}>My Services</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        {editing
+                            ? 'Tap to select the services you can provide. Bookings will be matched based on your selected services.'
+                            : 'These are the services you currently offer. Tap "Edit" to change them.'}
+                    </Text>
+
+                    <View style={styles.servicesGrid}>
+                        {ALL_SERVICES.map(service => {
+                            const isSelected = selectedServices.includes(service);
+                            return (
+                                <TouchableOpacity
+                                    key={service}
+                                    style={[
+                                        styles.serviceChip,
+                                        isSelected && styles.serviceChipSelected,
+                                        !editing && styles.serviceChipDisabled,
+                                    ]}
+                                    onPress={() => { if (editing) toggleService(service); }}
+                                    activeOpacity={editing ? 0.7 : 1}
+                                >
+                                    <Text style={styles.serviceIcon}>
+                                        {service === 'Everyday Cleaning' ? '🧹' : service === 'Expert Cook' ? '👨‍🍳' : '👕'}
+                                    </Text>
+                                    <Text style={[
+                                        styles.serviceChipText,
+                                        isSelected && styles.serviceChipTextSelected,
+                                    ]}>
+                                        {service}
+                                    </Text>
+                                    {isSelected && <Text style={styles.checkMark}>✓</Text>}
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
+
+                    {selectedServices.length === 0 && (
+                        <View style={styles.noServicesBanner}>
+                            <Text style={styles.noServicesText}>
+                                ⚠️ No services selected. You won't receive any booking requests.
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Save / Logout */}
@@ -225,13 +307,8 @@ const styles = StyleSheet.create({
     // Avatar section
     avatarSection: { alignItems: 'center', marginBottom: 24 },
     avatar: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#10b981',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 12,
+        width: 80, height: 80, borderRadius: 40,
+        backgroundColor: '#10b981', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
     },
     avatarText: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
     profileName: { fontSize: 20, fontWeight: 'bold', color: '#f8fafc' },
@@ -240,13 +317,8 @@ const styles = StyleSheet.create({
     verifiedText: { fontSize: 13, color: '#6ee7b7', fontWeight: '500' },
     // Stats
     statsRow: {
-        flexDirection: 'row',
-        backgroundColor: '#1e293b',
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 24,
-        borderWidth: 1,
-        borderColor: '#334155',
+        flexDirection: 'row', backgroundColor: '#1e293b', borderRadius: 14,
+        padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#334155',
     },
     statItem: { flex: 1, alignItems: 'center' },
     statValue: { fontSize: 18, fontWeight: 'bold', color: '#f8fafc', marginBottom: 4 },
@@ -254,45 +326,49 @@ const styles = StyleSheet.create({
     divider: { width: 1, backgroundColor: '#334155', marginVertical: 4 },
     // Form
     formSection: { marginBottom: 24 },
-    sectionTitle: { fontSize: 16, fontWeight: '600', color: '#f8fafc', marginBottom: 16 },
+    sectionTitle: { fontSize: 16, fontWeight: '600', color: '#f8fafc', marginBottom: 4 },
+    sectionSubtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16 },
     fieldGroup: { marginBottom: 16 },
     fieldLabel: { fontSize: 13, fontWeight: '600', color: '#94a3b8', marginBottom: 6 },
     fieldValue: { fontSize: 15, color: '#f8fafc' },
     input: {
-        backgroundColor: '#1e293b',
-        borderWidth: 1,
-        borderColor: '#334155',
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        fontSize: 15,
-        color: '#f8fafc',
+        backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155',
+        borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#f8fafc',
     },
     textArea: { textAlignVertical: 'top', minHeight: 80 },
-    tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    tag: {
-        backgroundColor: '#064e3b',
-        borderRadius: 16,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+    // Services
+    servicesGrid: { gap: 10 },
+    serviceChip: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#1e293b', borderRadius: 12,
+        paddingHorizontal: 16, paddingVertical: 14,
+        borderWidth: 1.5, borderColor: '#334155',
     },
-    tagText: { fontSize: 13, color: '#6ee7b7', fontWeight: '500' },
+    serviceChipSelected: {
+        backgroundColor: '#064e3b', borderColor: '#10b981',
+    },
+    serviceChipDisabled: {
+        opacity: 0.85,
+    },
+    serviceIcon: { fontSize: 20, marginRight: 12 },
+    serviceChipText: { fontSize: 15, color: '#94a3b8', flex: 1, fontWeight: '500' },
+    serviceChipTextSelected: { color: '#6ee7b7' },
+    checkMark: { color: '#10b981', fontSize: 18, fontWeight: 'bold', marginLeft: 8 },
+    noServicesBanner: {
+        backgroundColor: '#451a03', borderWidth: 1, borderColor: '#78350f',
+        borderRadius: 10, padding: 12, marginTop: 12,
+    },
+    noServicesText: { color: '#fbbf24', fontSize: 13 },
     // Buttons
     saveButton: {
-        backgroundColor: '#10b981',
-        borderRadius: 10,
-        paddingVertical: 16,
-        alignItems: 'center',
-        marginBottom: 16,
+        backgroundColor: '#10b981', borderRadius: 10,
+        paddingVertical: 16, alignItems: 'center', marginBottom: 16,
     },
     saveButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
     disabledButton: { opacity: 0.7 },
     logoutButton: {
-        borderWidth: 1,
-        borderColor: '#ef4444',
-        borderRadius: 10,
-        paddingVertical: 14,
-        alignItems: 'center',
+        borderWidth: 1, borderColor: '#ef4444', borderRadius: 10,
+        paddingVertical: 14, alignItems: 'center',
     },
     logoutText: { color: '#ef4444', fontSize: 16, fontWeight: '600' },
 });
