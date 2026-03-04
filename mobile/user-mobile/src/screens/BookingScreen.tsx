@@ -4,6 +4,7 @@ import {
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     SafeAreaView,
     ScrollView,
@@ -28,7 +29,9 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
         fullAddress: '',
         city: '',
         zip: '',
-        label: 'Home' as 'Home' | 'Work' | 'Other'
+        label: 'Home' as 'Home' | 'Work' | 'Other',
+        lat: null as number | null,
+        lng: null as number | null,
     });
 
     const [loading, setLoading] = useState(false);
@@ -46,6 +49,8 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                 fullAddress: locationAddress.fullAddress,
                 city: locationAddress.city,
                 zip: locationAddress.zip,
+                lat: locationAddress.latitude,
+                lng: locationAddress.longitude,
             }));
             Alert.alert('Location Fetched', 'Address filled from current location.');
         } else if (locationError) {
@@ -57,6 +62,32 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
         if (!address.fullAddress || !address.city || !address.zip) {
             Alert.alert('Missing Address', 'Please provide a valid address, city, and pincode.');
             return;
+        }
+
+        let coords = { lat: address.lat, lng: address.lng };
+        if (coords.lat == null || coords.lng == null) {
+            const locationAddress = await getCurrentLocation();
+            if (!locationAddress) {
+                Alert.alert(
+                    'Location Required',
+                    'Please enable location permission/GPS to continue booking.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    ]
+                );
+                return;
+            }
+
+            coords = {
+                lat: locationAddress.latitude,
+                lng: locationAddress.longitude,
+            };
+            setAddress(prev => ({
+                ...prev,
+                lat: locationAddress.latitude,
+                lng: locationAddress.longitude,
+            }));
         }
 
         setLoading(true);
@@ -78,6 +109,8 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                     address_line1: address.fullAddress,
                     city: address.city,
                     postal_code: parseInt(address.zip, 10) || null,
+                    lat: coords.lat,
+                    lng: coords.lng,
                 })
                 .select('id')
                 .single();

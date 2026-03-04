@@ -11,6 +11,8 @@ interface LocationAddress {
     fullAddress: string;
     city: string;
     zip: string;
+    latitude: number;
+    longitude: number;
 }
 
 interface UseLocationReturn {
@@ -38,6 +40,13 @@ export function useLocation(): UseLocationReturn {
         setError(null);
 
         try {
+            const servicesEnabled = await Location.hasServicesEnabledAsync();
+            if (!servicesEnabled) {
+                setError('Location services (GPS) are turned off. Please enable GPS and try again.');
+                setLoading(false);
+                return null;
+            }
+
             // Request foreground location permission using Expo API
             const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -70,6 +79,8 @@ export function useLocation(): UseLocationReturn {
                         .join(', ') || 'Address fetched',
                     city: geocoded.city || geocoded.region || '',
                     zip: geocoded.postalCode || '',
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
                 };
 
                 setAddress(locationAddress);
