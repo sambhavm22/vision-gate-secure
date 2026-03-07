@@ -1,16 +1,17 @@
 /**
- * Expo Push Notifications hook
- * Registers for push notifications and stores the token in user_devices table
+ * Push Notifications hook for Worker App
+ * Uses expo-notifications with getDevicePushTokenAsync() to get native FCM/APNs tokens.
+ * These native tokens are sent directly to FCM via the push-notifications edge function.
+ * Works with Expo Go, Expo Dev Client, and production builds.
  */
 
-import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { supabase } from '../services/supabase';
 
-// Configure how notifications appear when app is in foreground
+// Configure how notifications appear when the app is in foreground
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -22,12 +23,10 @@ Notifications.setNotificationHandler({
 });
 
 interface UseNotificationsReturn {
-    expoPushToken: string | null;
     notification: Notifications.Notification | null;
 }
 
 export function useNotifications(userId: string | null): UseNotificationsReturn {
-    const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
     const [notification, setNotification] = useState<Notifications.Notification | null>(null);
     const notificationListener = useRef<Notifications.EventSubscription | null>(null);
     const responseListener = useRef<Notifications.EventSubscription | null>(null);
@@ -35,102 +34,94 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
     useEffect(() => {
         if (!userId) return;
 
-        registerForPushNotifications(userId).then(token => {
-            if (token) setExpoPushToken(token);
-        });
+        // Register for push notifications and store the device token
+        registerForPushNotifications(userId);
 
-        // Listen for incoming notifications (foreground)
-        notificationListener.current = Notifications.addNotificationReceivedListener(notif => {
+        // Foreground notification listener
+        notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
             setNotification(notif);
         });
 
-        // Listen for notification taps (background/closed → reopened)
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+        // Notification response listener (user taps on notification)
+        responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
             const data = response.notification.request.content.data;
-            // Handle navigation based on notification data
-            if (data?.bookingId) {
-                // Navigation will be handled by the app
-                console.log('Notification tapped, bookingId:', data.bookingId);
-            }
+            console.log('[Push] Notification tapped, data:', data);
         });
 
         return () => {
-            if (notificationListener.current) {
-                notificationListener.current.remove();
-            }
-            if (responseListener.current) {
-                responseListener.current.remove();
-            }
+            notificationListener.current?.remove();
+            responseListener.current?.remove();
         };
     }, [userId]);
 
-    return { expoPushToken, notification };
+    return { notification };
 }
 
-async function registerForPushNotifications(userId: string): Promise<string | null> {
-    if (!Device.isDevice) {
-        console.log('Push notifications require a physical device');
-        return null;
-    }
-
-    // Check existing permissions
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-        Alert.alert('Permission Required', 'Push notifications need permission to work.');
-        return null;
-    }
-
-    // Android notification channel
-    if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#10b981',
-        });
-    }
-
+/**
+ * Register for push notifications using native device tokens (FCM on Android, APNs on iOS).
+ * These are NOT Expo push tokens — they are the raw platform tokens that FCM can deliver to.
+ */
+async function registerForPushNotifications(userId: string): Promise<void> {
     try {
-        // A valid EAS projectId is required to fetch an Expo push token.
-        // In Expo Go / local dev without EAS configured, skip silently.
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-        if (!projectId) {
-            // No EAS project configured — push tokens are unavailable in dev
-            return null;
+        // Check if running on a physical device (push doesn't work on simulators)
+        if (!Device.isDevice) {
+            console.log('[Push] Not a physical device, skipping registration');
+            return;
         }
 
-        const tokenData = await Notifications.getExpoPushTokenAsync({
-            projectId: projectId as string,
-        });
-        const token = tokenData.data;
+        // Request notification permissions
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
 
-        // Store token in user_devices table
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+
+        if (finalStatus !== 'granted') {
+            console.log('[Push] Permission not granted');
+            return;
+        }
+
+        // Get NATIVE device push token (FCM token on Android, APNs token on iOS)
+        // This is different from getExpoPushTokenAsync() — it returns the raw platform token
+        const tokenData = await Notifications.getDevicePushTokenAsync();
+        const deviceToken = tokenData.data;
+
+        console.log(`[Push] Native device token (${tokenData.type}):`, deviceToken);
+
+        // Store the token in user_devices table
         const { error } = await supabase
             .from('user_devices')
-            .upsert({
-                user_id: userId,
-                platform: Platform.OS,
-                os: Platform.OS,
-                device_token: token,
-                last_active: new Date().toISOString(),
-            }, {
-                onConflict: 'user_id,platform',
-            });
+            .upsert(
+                {
+                    user_id: userId,
+                    platform: Platform.OS,
+                    device_token: deviceToken,
+                    last_seen_at: new Date().toISOString(),
+                },
+                {
+                    onConflict: 'user_id,platform',
+                },
+            );
 
         if (error) {
-            console.error('Error storing push token:', error);
+            console.error('[Push] Error storing device token:', error);
+        } else {
+            console.log('[Push] Device token stored successfully');
         }
 
-        return token;
+        // Set up Android notification channel
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'Default',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#10b981',
+                sound: 'default',
+            });
+        }
     } catch (err) {
-        console.error('Error getting push token:', err);
-        return null;
+        console.error('[Push] Registration error:', err);
     }
 }

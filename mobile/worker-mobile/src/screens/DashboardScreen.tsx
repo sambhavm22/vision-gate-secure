@@ -250,11 +250,10 @@ export function DashboardScreen(): React.JSX.Element {
         if (!workerProfile) return;
         setProcessingId(bookingId);
         try {
-            const { data: booking } = await supabase.from('bookings').select('rejected_worker_ids').eq('id', bookingId).single();
-            const rejectedIds = booking?.rejected_worker_ids || [];
-            rejectedIds.push(workerProfile.id);
-
-            const { error } = await supabase.from('bookings').update({ rejected_worker_ids: rejectedIds }).eq('id', bookingId);
+            const { error } = await (supabase.rpc as any)('reject_booking', {
+                p_booking_id: bookingId,
+                p_worker_id: workerProfile.id,
+            });
             if (error) throw error;
             await fetchBookings();
         } catch (err: any) {

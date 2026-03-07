@@ -6,19 +6,20 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, Text, View } from 'react-native';
 
 import { useUser } from './hooks/useUser';
 import {
-    CalendarScreen,
     DashboardScreen,
     EarningsScreen,
     LoginScreen,
     MyJobsScreen,
+    NotificationsScreen,
     OTPScreen,
-    ProfileScreen,
+    ProfileScreen
 } from './screens';
+import { supabase } from './services/supabase';
 
 // Navigation type definitions
 export type RootStackParamList = {
@@ -32,6 +33,7 @@ export type MainTabParamList = {
     Calendar: undefined;
     MyJobs: undefined;
     Earnings: undefined;
+    Notifications: undefined;
     Profile: undefined;
 };
 
@@ -39,6 +41,32 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
+    const { workerProfile } = useUser();
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Fetch unread count
+    const fetchUnread = useCallback(async () => {
+        if (!workerProfile?.id) return;
+        const { count } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', workerProfile.id)
+            .eq('is_read', false);
+        setUnreadCount(count || 0);
+    }, [workerProfile?.id]);
+
+    useEffect(() => { fetchUnread(); }, [fetchUnread]);
+
+    // Real-time badge update
+    useEffect(() => {
+        if (!workerProfile?.id) return;
+        const channel = supabase
+            .channel('worker-badge-count')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${workerProfile.id}` }, () => fetchUnread())
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [workerProfile?.id, fetchUnread]);
+
     return (
         <Tab.Navigator
             screenOptions={{
@@ -67,19 +95,28 @@ function MainTabs() {
                 }}
             />
             <Tab.Screen
-                name="Calendar"
-                component={CalendarScreen}
-                options={{
-                    title: 'Schedule',
-                    tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 20 }}>📅</Text>,
-                }}
-            />
-            <Tab.Screen
                 name="MyJobs"
                 component={MyJobsScreen}
                 options={{
                     title: 'My Jobs',
                     tabBarIcon: ({ color }: { color: string }) => <Text style={{ color, fontSize: 20 }}>📋</Text>,
+                }}
+            />
+            <Tab.Screen
+                name="Notifications"
+                component={NotificationsScreen}
+                options={{
+                    title: 'Alerts',
+                    tabBarIcon: ({ color }: { color: string }) => (
+                        <View>
+                            <Text style={{ color, fontSize: 20 }}>🔔</Text>
+                            {unreadCount > 0 && (
+                                <View style={{ position: 'absolute', top: -4, right: -10, backgroundColor: '#ef4444', borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                                </View>
+                            )}
+                        </View>
+                    ),
                 }}
             />
             <Tab.Screen

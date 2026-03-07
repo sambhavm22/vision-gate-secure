@@ -6,8 +6,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React from 'react';
-import { StatusBar, Text } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { StatusBar, Text, View } from 'react-native';
 
 import { useNotifications } from './hooks/useNotifications';
 import { useUser } from './hooks/useUser';
@@ -18,6 +18,7 @@ import {
     HomeScreen,
     LoginScreen,
     MyBookingsScreen,
+    NotificationsScreen,
     OTPScreen,
     ProfileScreen,
     SavedAddressScreen,
@@ -27,6 +28,7 @@ import {
     WalletScreen,
     YourExpertsScreen,
 } from './screens';
+import { supabase } from './services/supabase';
 
 // Navigation type definitions
 export type RootStackParamList = {
@@ -70,7 +72,7 @@ export type RootStackParamList = {
 export type MainTabParamList = {
     Home: undefined;
     MyBookings: undefined;
-
+    Notifications: undefined;
     Profile: undefined;
 };
 
@@ -78,8 +80,30 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
-    const isDarkMode = true; // Use Dark Mode by default
+    const isDarkMode = true;
+    const { user } = useUser();
+    const [unreadCount, setUnreadCount] = useState(0);
 
+    const fetchUnread = useCallback(async () => {
+        if (!user?.id) return;
+        const { count } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_read', false);
+        setUnreadCount(count || 0);
+    }, [user?.id]);
+
+    useEffect(() => { fetchUnread(); }, [fetchUnread]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        const channel = supabase
+            .channel('user-badge-count')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => fetchUnread())
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [user?.id, fetchUnread]);
 
     return (
         <Tab.Navigator
@@ -106,7 +130,23 @@ function MainTabs() {
                     tabBarIcon: ({ color }) => <Text style={{ color }}>📅</Text>
                 }}
             />
-
+            <Tab.Screen
+                name="Notifications"
+                component={NotificationsScreen}
+                options={{
+                    title: 'Alerts',
+                    tabBarIcon: ({ color }) => (
+                        <View>
+                            <Text style={{ color }}>🔔</Text>
+                            {unreadCount > 0 && (
+                                <View style={{ position: 'absolute', top: -4, right: -10, backgroundColor: '#ef4444', borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                                </View>
+                            )}
+                        </View>
+                    ),
+                }}
+            />
             <Tab.Screen
                 name="Profile"
                 component={ProfileScreen}
