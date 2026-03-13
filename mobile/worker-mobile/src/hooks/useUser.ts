@@ -8,6 +8,7 @@ import { supabase } from '../services/supabase';
 
 export interface WorkerProfile {
     id: string;
+    user_id?: string | null;
     full_name: string;
     phone: string | null;
     bio: string | null;
@@ -40,11 +41,14 @@ export function useUser(): UseUserReturn {
 
     const fetchWorkerProfile = async (userId: string) => {
         try {
+            await (supabase.rpc as any)('claim_worker_profile');
+
             const { data, error: fetchError } = await supabase
                 .from('workers_public')
                 .select('*')
-                .eq('id', userId)
-                .single();
+                .or(`user_id.eq.${userId},id.eq.${userId}`)
+                .limit(1)
+                .maybeSingle();
 
             if (fetchError && fetchError.code !== 'PGRST116') {
                 console.error('Error fetching worker profile:', fetchError);

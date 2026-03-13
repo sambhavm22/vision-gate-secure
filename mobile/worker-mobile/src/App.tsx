@@ -42,31 +42,29 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
-    const { workerProfile } = useUser();
+    const { user } = useUser();
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // Fetch unread count
     const fetchUnread = useCallback(async () => {
-        if (!workerProfile?.id) return;
+        if (!user?.id) return;
         const { count } = await supabase
             .from('notifications')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', workerProfile.id)
+            .eq('user_id', user.id)
             .eq('is_read', false);
         setUnreadCount(count || 0);
-    }, [workerProfile?.id]);
+    }, [user?.id]);
 
     useEffect(() => { fetchUnread(); }, [fetchUnread]);
 
-    // Real-time badge update
     useEffect(() => {
-        if (!workerProfile?.id) return;
+        if (!user?.id) return;
         const channel = supabase
             .channel('worker-badge-count')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${workerProfile.id}` }, () => fetchUnread())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => fetchUnread())
             .subscribe();
         return () => { supabase.removeChannel(channel); };
-    }, [workerProfile?.id, fetchUnread]);
+    }, [user?.id, fetchUnread]);
 
     return (
         <Tab.Navigator
@@ -152,10 +150,19 @@ function SplashScreen() {
 }
 
 function App(): React.JSX.Element {
+<<<<<<< HEAD
     const { session, user, loading } = useUser();
 
     // Register for push notifications as soon as the user is logged in
     useNotifications(user?.id ?? null);
+=======
+    const { user, session, loading } = useUser();
+
+    useNotifications(user?.id ?? null);
+
+    const handleAuthSuccess = () => {
+    };
+>>>>>>> e36ad2a5433a250946222fe6bf2d5a1a42256209
 
     if (loading) {
         return <SplashScreen />;

@@ -21,4 +21,9 @@ module.exports = {
         ],
         'expo-web-browser',
     ],
+    extra: {
+        eas: {
+            projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || 'your-eas-project-id',
+        },
+    },
 };

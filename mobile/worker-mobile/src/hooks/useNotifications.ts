@@ -1,17 +1,15 @@
 /**
- * Push Notifications hook for Worker App
- * Uses expo-notifications with getDevicePushTokenAsync() to get native FCM/APNs tokens.
- * These native tokens are sent directly to FCM via the push-notifications edge function.
- * Works with Expo Go, Expo Dev Client, and production builds.
+ * Push Notifications hook for Worker App.
+ * Stores Expo push tokens because the backend sends via Expo Push API.
  */
 
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Platform } from 'react-native';
 import { supabase } from '../services/supabase';
 
-// Configure how notifications appear when the app is in foreground
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -39,10 +37,8 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
 
         console.log('[Push] Registering for user:', userId);
 
-        // Register for push notifications and store the device token
         registerForPushNotifications(userId);
 
-        // Foreground notification listener
         notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
             setNotification(notif);
             // Show visible alert for foreground notifications
@@ -52,7 +48,6 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
             );
         });
 
-        // Notification response listener (user taps on notification)
         responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
             const data = response.notification.request.content.data;
             console.log('[Push] Notification tapped, data:', data);
@@ -67,19 +62,20 @@ export function useNotifications(userId: string | null): UseNotificationsReturn 
     return { notification };
 }
 
+<<<<<<< HEAD
 /**
  * Register for push notifications using native device tokens (FCM on Android, APNs on iOS).
  */
+=======
+>>>>>>> e36ad2a5433a250946222fe6bf2d5a1a42256209
 async function registerForPushNotifications(userId: string): Promise<void> {
     try {
-        // Check if running on a physical device (push doesn't work on simulators)
         if (!Device.isDevice) {
             console.log('[Push] Not a physical device, skipping');
             Alert.alert('[Push Debug]', 'Not a physical device — skipping token registration');
             return;
         }
 
-        // Request notification permissions
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
@@ -94,23 +90,32 @@ async function registerForPushNotifications(userId: string): Promise<void> {
             return;
         }
 
+<<<<<<< HEAD
         console.log('[Push] Permission granted, getting device token...');
 
         // Get NATIVE device push token (FCM token on Android, APNs token on iOS)
         const tokenData = await Notifications.getDevicePushTokenAsync();
         const deviceToken =
             typeof tokenData.data === 'string' ? tokenData.data : JSON.stringify(tokenData.data);
+=======
+        const projectId =
+            Constants?.easConfig?.projectId ??
+            (Constants?.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
 
-        console.log(`[Push] Native device token (${tokenData.type}):`, deviceToken);
+        const tokenData = projectId
+            ? await Notifications.getExpoPushTokenAsync({ projectId })
+            : await Notifications.getExpoPushTokenAsync();
+>>>>>>> e36ad2a5433a250946222fe6bf2d5a1a42256209
 
-        // Store the token in user_devices table
+        console.log('[Push] Expo push token:', tokenData.data);
+
         const { error } = await supabase
             .from('user_devices')
             .upsert(
                 {
                     user_id: userId,
                     platform: Platform.OS,
-                    device_token: deviceToken,
+                    device_token: tokenData.data,
                     last_seen_at: new Date().toISOString(),
                 },
                 {
@@ -126,7 +131,6 @@ async function registerForPushNotifications(userId: string): Promise<void> {
             Alert.alert('[Push Debug]', `✅ Token stored!\nType: ${tokenData.type}\nToken: ${deviceToken.substring(0, 20)}...`);
         }
 
-        // Set up Android notification channel
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('default', {
                 name: 'Default',

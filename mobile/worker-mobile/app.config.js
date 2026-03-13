@@ -15,7 +15,7 @@ module.exports = {
     ],
     extra: {
         eas: {
-            projectId: 'your-eas-project-id',
+            projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || 'your-eas-project-id',
         },
     },
 };
