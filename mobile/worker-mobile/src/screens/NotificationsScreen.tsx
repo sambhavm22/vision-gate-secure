@@ -24,18 +24,18 @@ interface NotificationItem {
 }
 
 export function NotificationsScreen(): React.JSX.Element {
-    const { workerProfile } = useUser();
+    const { user } = useUser();
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const fetchNotifications = useCallback(async () => {
-        if (!workerProfile?.id) return;
+        if (!user?.id) return;
         try {
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
-                .eq('user_id', workerProfile.id)
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -47,7 +47,7 @@ export function NotificationsScreen(): React.JSX.Element {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [workerProfile]);
+    }, [user?.id]);
 
     useEffect(() => {
         fetchNotifications();
@@ -55,7 +55,7 @@ export function NotificationsScreen(): React.JSX.Element {
 
     // Real-time subscription for new notifications
     useEffect(() => {
-        if (!workerProfile?.id) return;
+        if (!user?.id) return;
 
         const channel = supabase
             .channel('worker-notifications-list')
@@ -65,7 +65,7 @@ export function NotificationsScreen(): React.JSX.Element {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'notifications',
-                    filter: `user_id=eq.${workerProfile.id}`,
+                    filter: `user_id=eq.${user.id}`,
                 },
                 () => {
                     fetchNotifications();
@@ -76,7 +76,7 @@ export function NotificationsScreen(): React.JSX.Element {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [workerProfile?.id, fetchNotifications]);
+    }, [user?.id, fetchNotifications]);
 
     const markAsRead = async (notification: NotificationItem) => {
         if (notification.is_read) return;
@@ -95,12 +95,12 @@ export function NotificationsScreen(): React.JSX.Element {
     };
 
     const markAllAsRead = async () => {
-        if (!workerProfile?.id) return;
+        if (!user?.id) return;
         try {
             await supabase
                 .from('notifications')
                 .update({ is_read: true })
-                .eq('user_id', workerProfile.id)
+                .eq('user_id', user.id)
                 .eq('is_read', false);
 
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));

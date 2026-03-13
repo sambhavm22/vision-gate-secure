@@ -13,7 +13,6 @@ import {
     View,
 } from 'react-native';
 import { useLocation } from '../hooks/useLocation';
-import { useNotifications } from '../hooks/useNotifications';
 import { useUser } from '../hooks/useUser';
 import { supabase } from '../services/supabase';
 
@@ -36,7 +35,6 @@ interface BookingRequest {
 
 export function DashboardScreen(): React.JSX.Element {
     const { user, workerProfile, refreshProfile } = useUser();
-    const { notification } = useNotifications(user?.id ?? null);
 
     // States
     const [isOnline, setIsOnline] = useState(workerProfile?.is_online ?? false);
@@ -157,7 +155,7 @@ export function DashboardScreen(): React.JSX.Element {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'notifications',
-                    filter: `user_id=eq.${workerProfile.id}`,
+                    filter: `user_id=eq.${user?.id}`,
                 },
                 (payload: any) => {
                     const n = payload.new;
@@ -174,13 +172,7 @@ export function DashboardScreen(): React.JSX.Element {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [workerProfile, isOnline, fetchBookings, fetchStats]);
-
-    useEffect(() => {
-        if (notification) {
-            fetchBookings();
-        }
-    }, [notification, fetchBookings]);
+    }, [workerProfile, user?.id, isOnline, fetchBookings, fetchStats]);
 
     // Derived state for filtered bookings
     const filteredAndSortedBookings = useMemo(() => {

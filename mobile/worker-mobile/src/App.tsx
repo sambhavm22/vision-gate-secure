@@ -9,6 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, Text, View } from 'react-native';
 
+import { useNotifications } from './hooks/useNotifications';
 import { useUser } from './hooks/useUser';
 import {
     DashboardScreen,
@@ -41,31 +42,29 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
-    const { workerProfile } = useUser();
+    const { user } = useUser();
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // Fetch unread count
     const fetchUnread = useCallback(async () => {
-        if (!workerProfile?.id) return;
+        if (!user?.id) return;
         const { count } = await supabase
             .from('notifications')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', workerProfile.id)
+            .eq('user_id', user.id)
             .eq('is_read', false);
         setUnreadCount(count || 0);
-    }, [workerProfile?.id]);
+    }, [user?.id]);
 
     useEffect(() => { fetchUnread(); }, [fetchUnread]);
 
-    // Real-time badge update
     useEffect(() => {
-        if (!workerProfile?.id) return;
+        if (!user?.id) return;
         const channel = supabase
             .channel('worker-badge-count')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${workerProfile.id}` }, () => fetchUnread())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => fetchUnread())
             .subscribe();
         return () => { supabase.removeChannel(channel); };
-    }, [workerProfile?.id, fetchUnread]);
+    }, [user?.id, fetchUnread]);
 
     return (
         <Tab.Navigator
@@ -151,10 +150,11 @@ function SplashScreen() {
 }
 
 function App(): React.JSX.Element {
-    const { session, loading } = useUser();
+    const { user, session, loading } = useUser();
+
+    useNotifications(user?.id ?? null);
 
     const handleAuthSuccess = () => {
-        // Session change will auto-navigate
     };
 
     if (loading) {
