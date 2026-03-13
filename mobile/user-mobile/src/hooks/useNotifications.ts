@@ -8,7 +8,7 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { supabase } from '../services/supabase';
 
 // Configure how notifications appear when the app is in foreground
@@ -27,14 +27,20 @@ export function useNotifications(userId: string | null): void {
     const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
     useEffect(() => {
-        if (!userId) return;
+        if (!userId) {
+            console.log('[Push] No userId, skipping');
+            return;
+        }
 
-        // Register for push notifications and store the device token
+        console.log('[Push] Registering for user:', userId);
         registerForPushNotifications(userId);
 
         // Foreground notification listener
         notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
-            console.log('[Push] Foreground notification:', notif.request.content.title);
+            Alert.alert(
+                notif.request.content.title ?? 'Notification',
+                notif.request.content.body ?? '',
+            );
         });
 
         // Notification response listener (user taps on notification)
@@ -56,7 +62,8 @@ export function useNotifications(userId: string | null): void {
 async function registerForPushNotifications(userId: string): Promise<void> {
     try {
         if (!Device.isDevice) {
-            console.log('[Push] Not a physical device, skipping registration');
+            console.log('[Push] Not a physical device, skipping');
+            Alert.alert('[Push Debug]', 'Not a physical device — skipping token registration');
             return;
         }
 
@@ -70,12 +77,16 @@ async function registerForPushNotifications(userId: string): Promise<void> {
 
         if (finalStatus !== 'granted') {
             console.log('[Push] Permission not granted');
+            Alert.alert('[Push Debug]', `Permission status: ${finalStatus} — not granted`);
             return;
         }
 
+        console.log('[Push] Permission granted, getting device token...');
+
         // Get NATIVE device push token (FCM on Android, APNs on iOS)
         const tokenData = await Notifications.getDevicePushTokenAsync();
-        const deviceToken = tokenData.data;
+        const deviceToken =
+            typeof tokenData.data === 'string' ? tokenData.data : JSON.stringify(tokenData.data);
 
         console.log(`[Push] Native device token (${tokenData.type}):`, deviceToken);
 
@@ -96,8 +107,10 @@ async function registerForPushNotifications(userId: string): Promise<void> {
 
         if (error) {
             console.error('[Push] Error storing device token:', error);
+            Alert.alert('[Push Debug]', `DB upsert error: ${error.message}`);
         } else {
             console.log('[Push] Device token stored successfully');
+            Alert.alert('[Push Debug]', `✅ Token stored!\nType: ${tokenData.type}\nToken: ${deviceToken.substring(0, 20)}...`);
         }
 
         // Android notification channel
@@ -110,7 +123,11 @@ async function registerForPushNotifications(userId: string): Promise<void> {
                 sound: 'default',
             });
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error('[Push] Registration error:', err);
+        Alert.alert(
+            '[Push Debug] Registration Failed',
+            `Error: ${err?.message ?? String(err)}`,
+        );
     }
 }

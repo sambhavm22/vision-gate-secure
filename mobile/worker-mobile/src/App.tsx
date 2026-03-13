@@ -9,6 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, Text, View } from 'react-native';
 
+import { useNotifications } from './hooks/useNotifications';
 import { useUser } from './hooks/useUser';
 import {
     DashboardScreen,
@@ -151,11 +152,10 @@ function SplashScreen() {
 }
 
 function App(): React.JSX.Element {
-    const { session, loading } = useUser();
+    const { session, user, loading } = useUser();
 
-    const handleAuthSuccess = () => {
-        // Session change will auto-navigate
-    };
+    // Register for push notifications as soon as the user is logged in
+    useNotifications(user?.id ?? null);
 
     if (loading) {
         return <SplashScreen />;
@@ -176,7 +176,7 @@ function App(): React.JSX.Element {
                     <>
                         <Stack.Screen name="Login" component={LoginScreen} />
                         <Stack.Screen name="OTP">
-                            {(props: any) => <OTPScreen {...props} onAuthSuccess={handleAuthSuccess} />}
+                            {(props: any) => <OTPScreen {...props} onAuthSuccess={() => { }} />}
                         </Stack.Screen>
                     </>
                 )}
