@@ -30,10 +30,7 @@ export function useNotifications(userId: string | null): void {
             return;
         }
 
-<<<<<<< HEAD
         console.log('[Push] Registering for user:', userId);
-=======
->>>>>>> e36ad2a5433a250946222fe6bf2d5a1a42256209
         registerForPushNotifications(userId);
 
         notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
@@ -77,22 +74,12 @@ async function registerForPushNotifications(userId: string): Promise<void> {
             return;
         }
 
-<<<<<<< HEAD
         console.log('[Push] Permission granted, getting device token...');
 
         // Get NATIVE device push token (FCM on Android, APNs on iOS)
         const tokenData = await Notifications.getDevicePushTokenAsync();
         const deviceToken =
             typeof tokenData.data === 'string' ? tokenData.data : JSON.stringify(tokenData.data);
-=======
-        const projectId =
-            Constants?.easConfig?.projectId ??
-            (Constants?.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
-
-        const tokenData = projectId
-            ? await Notifications.getExpoPushTokenAsync({ projectId })
-            : await Notifications.getExpoPushTokenAsync();
->>>>>>> e36ad2a5433a250946222fe6bf2d5a1a42256209
 
         console.log('[Push] Expo push token:', tokenData.data);
 

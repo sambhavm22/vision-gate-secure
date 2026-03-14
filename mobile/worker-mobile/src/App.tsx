@@ -150,19 +150,10 @@ function SplashScreen() {
 }
 
 function App(): React.JSX.Element {
-<<<<<<< HEAD
     const { session, user, loading } = useUser();
 
     // Register for push notifications as soon as the user is logged in
     useNotifications(user?.id ?? null);
-=======
-    const { user, session, loading } = useUser();
-
-    useNotifications(user?.id ?? null);
-
-    const handleAuthSuccess = () => {
-    };
->>>>>>> e36ad2a5433a250946222fe6bf2d5a1a42256209
 
     if (loading) {
         return <SplashScreen />;

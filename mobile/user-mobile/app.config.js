@@ -23,7 +23,7 @@ module.exports = {
     ],
     extra: {
         eas: {
-            projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || 'your-eas-project-id',
+            projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID_USER || '78164ef1-4f1b-4dad-b90d-df1ea105778e',
         },
     },
 };
