@@ -5,6 +5,7 @@ import {
     SafeAreaView,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -26,6 +27,38 @@ export function ProfileScreen(): React.JSX.Element {
     const [selectedServices, setSelectedServices] = useState<string[]>(
         workerProfile?.service_types || []
     );
+    const [remindersEnabled, setRemindersEnabled] = useState(true);
+    const [savingReminders, setSavingReminders] = useState(false);
+
+    // Fetch reminder preferences
+    useEffect(() => {
+        const fetchPrefs = async () => {
+            if (!user?.id) return;
+            const { data } = await supabase
+                .from('reminder_preferences')
+                .select('reminders_enabled')
+                .eq('user_id', user.id)
+                .single();
+            if (data) setRemindersEnabled(data.reminders_enabled);
+        };
+        fetchPrefs();
+    }, [user?.id]);
+
+    const toggleReminders = async (value: boolean) => {
+        if (!user?.id) return;
+        setRemindersEnabled(value);
+        setSavingReminders(true);
+        try {
+            const { error } = await supabase
+                .from('reminder_preferences')
+                .upsert({ user_id: user.id, reminders_enabled: value }, { onConflict: 'user_id' });
+            if (error) throw error;
+        } catch {
+            setRemindersEnabled(!value); // revert
+        } finally {
+            setSavingReminders(false);
+        }
+    };
 
     // Keep local state in sync when workerProfile refreshes
     useEffect(() => {
@@ -264,6 +297,25 @@ export function ProfileScreen(): React.JSX.Element {
                     )}
                 </View>
 
+                {/* Preferences */}
+                <View style={styles.formSection}>
+                    <Text style={styles.sectionTitle}>Preferences</Text>
+
+                    <View style={styles.preferenceRow}>
+                        <View style={styles.preferenceInfo}>
+                            <Text style={styles.preferenceTitle}>🔔 Booking Reminders</Text>
+                            <Text style={styles.preferenceSubtitle}>Get notified 1 hour before upcoming jobs</Text>
+                        </View>
+                        <Switch
+                            value={remindersEnabled}
+                            onValueChange={toggleReminders}
+                            trackColor={{ false: '#334155', true: '#10b981' }}
+                            thumbColor={remindersEnabled ? '#fff' : '#94a3b8'}
+                            disabled={savingReminders}
+                        />
+                    </View>
+                </View>
+
                 {/* Save / Logout */}
                 {editing && (
                     <TouchableOpacity
@@ -359,6 +411,15 @@ const styles = StyleSheet.create({
         borderRadius: 10, padding: 12, marginTop: 12,
     },
     noServicesText: { color: '#fbbf24', fontSize: 13 },
+    // Preferences
+    preferenceRow: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: '#1e293b', borderRadius: 12, padding: 16,
+        borderWidth: 1, borderColor: '#334155',
+    },
+    preferenceInfo: { flex: 1, marginRight: 16 },
+    preferenceTitle: { fontSize: 15, fontWeight: '600', color: '#f8fafc', marginBottom: 4 },
+    preferenceSubtitle: { fontSize: 13, color: '#94a3b8' },
     // Buttons
     saveButton: {
         backgroundColor: '#10b981', borderRadius: 10,

@@ -13,12 +13,15 @@ import { useNotifications } from './hooks/useNotifications';
 import { useUser } from './hooks/useUser';
 import {
     DashboardScreen,
+    DisputeDetailScreen,
     EarningsScreen,
     LoginScreen,
+    MyDisputesScreen,
     MyJobsScreen,
     NotificationsScreen,
     OTPScreen,
-    ProfileScreen
+    ProfileScreen,
+    RaiseDisputeScreen,
 } from './screens';
 import { supabase } from './services/supabase';
 
@@ -27,6 +30,15 @@ export type RootStackParamList = {
     Login: undefined;
     OTP: { contact: string; method: 'phone' | 'email' };
     MainTabs: { screen?: keyof MainTabParamList };
+    RaiseDispute: {
+        bookingId: string;
+        serviceName: string;
+        customerId?: string;
+    };
+    MyDisputes: undefined;
+    DisputeDetail: {
+        disputeId: string;
+    };
 };
 
 export type MainTabParamList = {
@@ -169,7 +181,24 @@ function App(): React.JSX.Element {
                 }}
             >
                 {session ? (
-                    <Stack.Screen name="MainTabs" component={MainTabs} />
+                    <>
+                        <Stack.Screen name="MainTabs" component={MainTabs} />
+                        <Stack.Screen
+                            name="RaiseDispute"
+                            component={RaiseDisputeScreen}
+                            options={{ headerShown: true, title: 'Report Issue', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                        <Stack.Screen
+                            name="MyDisputes"
+                            component={MyDisputesScreen}
+                            options={{ headerShown: true, title: 'My Disputes', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                        <Stack.Screen
+                            name="DisputeDetail"
+                            component={DisputeDetailScreen}
+                            options={{ headerShown: true, title: 'Dispute Details', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                    </>
                 ) : (
                     <>
                         <Stack.Screen name="Login" component={LoginScreen} />

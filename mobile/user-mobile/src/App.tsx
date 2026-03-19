@@ -14,13 +14,18 @@ import { useUser } from './hooks/useUser';
 import {
     BookingDetailsScreen,
     BookingScreen,
+    DisputeDetailScreen,
     DurationSelectionScreen,
     HomeScreen,
+    LiveTrackingScreen,
     LoginScreen,
     MyBookingsScreen,
+    MyDisputesScreen,
     NotificationsScreen,
     OTPScreen,
     ProfileScreen,
+    RaiseDisputeScreen,
+    ReminderSettingsScreen,
     SavedAddressScreen,
     ScheduleScreen,
     SplashScreen,
@@ -67,6 +72,17 @@ export type RootStackParamList = {
         workerName: string | null;
         paymentMethod: string | null;
     };
+    RaiseDispute: {
+        bookingId: string;
+        serviceName: string;
+        workerId?: string;
+    };
+    MyDisputes: undefined;
+    DisputeDetail: {
+        disputeId: string;
+    };
+    ReminderSettings: undefined;
+    LiveTracking: { bookingId: string };
 };
 
 export type MainTabParamList = {
@@ -222,6 +238,31 @@ function App(): React.JSX.Element {
                             name="BookingDetails"
                             component={BookingDetailsScreen}
                             options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="RaiseDispute"
+                            component={RaiseDisputeScreen}
+                            options={{ headerShown: true, title: 'Report Issue', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                        <Stack.Screen
+                            name="MyDisputes"
+                            component={MyDisputesScreen}
+                            options={{ headerShown: true, title: 'My Disputes', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                        <Stack.Screen
+                            name="DisputeDetail"
+                            component={DisputeDetailScreen}
+                            options={{ headerShown: true, title: 'Dispute Details', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                        <Stack.Screen
+                            name="ReminderSettings"
+                            component={ReminderSettingsScreen}
+                            options={{ headerShown: true, title: 'Reminder Settings', headerStyle: { backgroundColor: '#1e293b' }, headerTintColor: '#fff' }}
+                        />
+                        <Stack.Screen
+                            name="LiveTracking"
+                            component={LiveTrackingScreen}
+                            options={{ headerShown: false }} // custom header
                         />
                     </>
                 ) : (

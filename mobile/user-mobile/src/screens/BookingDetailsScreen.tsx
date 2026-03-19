@@ -311,6 +311,36 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
 
                     <View style={styles.dividerThin} />
 
+                    {/* Reminder Info */}
+                    {!isCompleted && !isCancelled && (
+                        <View style={[styles.actionRow, { backgroundColor: 'rgba(59, 130, 246, 0.08)', borderRadius: 12, marginBottom: 8 }]}>
+                            <View style={[styles.actionIconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                                <Text style={styles.actionIconText}>⏰</Text>
+                            </View>
+                            <View style={styles.actionInfo}>
+                                <Text style={styles.actionTitle}>Booking Reminder</Text>
+                                <Text style={styles.actionSubtitle}>You'll be notified 1 hour before service</Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Track Worker (Only when en_route) */}
+                    {status === 'en_route' && (
+                        <TouchableOpacity
+                            style={[styles.actionRow, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: 12, marginBottom: 8 }]}
+                            onPress={() => navigation.navigate('LiveTracking', { bookingId })}
+                        >
+                            <View style={[styles.actionIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                                <Text style={styles.actionIconText}>📍</Text>
+                            </View>
+                            <View style={styles.actionInfo}>
+                                <Text style={[styles.actionTitle, { color: '#059669' }]}>Track Worker Live</Text>
+                                <Text style={styles.actionSubtitle}>Your expert is on the way</Text>
+                            </View>
+                            <Text style={[styles.actionChevron, { color: '#059669' }]}>›</Text>
+                        </TouchableOpacity>
+                    )}
+
                     {/* Contact Support */}
                     <TouchableOpacity
                         style={styles.actionRow}
@@ -322,6 +352,27 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
                         <View style={styles.actionInfo}>
                             <Text style={styles.actionTitle}>Contact Support</Text>
                             <Text style={styles.actionSubtitle}>Get quick help for your queries</Text>
+                        </View>
+                        <Text style={styles.actionChevron}>›</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.dividerThin} />
+
+                    {/* Report Issue / Raise Dispute */}
+                    <TouchableOpacity
+                        style={styles.actionRow}
+                        onPress={() => navigation.navigate('RaiseDispute', {
+                            bookingId,
+                            serviceName,
+                            workerId: undefined,
+                        })}
+                    >
+                        <View style={[styles.actionIconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                            <Text style={styles.actionIconText}>⚠️</Text>
+                        </View>
+                        <View style={styles.actionInfo}>
+                            <Text style={styles.actionTitle}>Report Issue</Text>
+                            <Text style={styles.actionSubtitle}>Raise a dispute for this booking</Text>
                         </View>
                         <Text style={styles.actionChevron}>›</Text>
                     </TouchableOpacity>

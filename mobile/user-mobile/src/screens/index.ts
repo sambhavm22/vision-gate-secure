@@ -19,3 +19,9 @@ export { SplashScreen } from './SplashScreen';
 export { WalletScreen } from './WalletScreen';
 export { YourExpertsScreen } from './YourExpertsScreen';
 
+export { DisputeDetailScreen } from './DisputeDetailScreen';
+export { LiveTrackingScreen } from './LiveTrackingScreen';
+export { MyDisputesScreen } from './MyDisputesScreen';
+export { RaiseDisputeScreen } from './RaiseDisputeScreen';
+export { ReminderSettingsScreen } from './ReminderSettingsScreen';
+

@@ -7,3 +7,7 @@ export { NotificationsScreen } from './NotificationsScreen';
 export { OTPScreen } from './OTPScreen';
 export { ProfileScreen } from './ProfileScreen';
 
+export { DisputeDetailScreen } from './DisputeDetailScreen';
+export { MyDisputesScreen } from './MyDisputesScreen';
+export { RaiseDisputeScreen } from './RaiseDisputeScreen';
+

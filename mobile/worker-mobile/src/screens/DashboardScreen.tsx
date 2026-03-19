@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useActiveJobTracking } from '../hooks/useActiveJobTracking';
 import { useLocation } from '../hooks/useLocation';
 import { useUser } from '../hooks/useUser';
 import { supabase } from '../services/supabase';
@@ -31,6 +32,8 @@ interface BookingRequest {
     customer_name?: string;
     address_line1?: string;
     city?: string;
+    destinationLat?: number;
+    destinationLng?: number;
 }
 
 export function DashboardScreen(): React.JSX.Element {
@@ -40,9 +43,17 @@ export function DashboardScreen(): React.JSX.Element {
     const [isOnline, setIsOnline] = useState(workerProfile?.is_online ?? false);
     const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
     const [activeBooking, setActiveBooking] = useState<BookingRequest | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
+
+    // Live Tracking Hook
+    const { isTracking, etaMinutes, distanceRemaining } = useActiveJobTracking({
+        bookingId: activeBooking?.id,
+        isActive: activeBooking?.status === 'en_route',
+        destinationLat: activeBooking?.destinationLat,
+        destinationLng: activeBooking?.destinationLng,
+    });
 
     // Location — requests GPS permission, saves to workers_public.location
     const {
@@ -107,7 +118,7 @@ export function DashboardScreen(): React.JSX.Element {
             // Fetch active booking
             const { data: activeData, error: activeError } = await supabase
                 .from('bookings')
-                .select('*, services(name), addresses(address_line1, city)')
+                .select('*, services(name), addresses(address_line1, city, lat, lng)')
                 .eq('worker_id', workerProfile.id)
                 .in('status', ['accepted', 'en_route', 'in_progress'])
                 .order('scheduled_at', { ascending: true })
@@ -122,6 +133,8 @@ export function DashboardScreen(): React.JSX.Element {
                     service_name: (activeData as any).services?.name || activeData.service_name || 'Service',
                     address_line1: (activeData as any).addresses?.address_line1,
                     city: (activeData as any).addresses?.city,
+                    destinationLat: (activeData as any).addresses?.lat,
+                    destinationLng: (activeData as any).addresses?.lng,
                 });
             } else {
                 setActiveBooking(null);
@@ -259,9 +272,15 @@ export function DashboardScreen(): React.JSX.Element {
         if (!workerProfile) return;
         setProcessingId(bookingId);
         try {
-            const { error } = await (supabase.rpc as any)('update_booking_status', {
-                p_booking_id: bookingId, p_worker_id: workerProfile.id, p_status: newStatus,
-            });
+            const updates: any = { status: newStatus };
+            if (newStatus === 'en_route') {
+                updates.worker_started_at = new Date().toISOString();
+            }
+
+            const { error } = await supabase
+                .from('bookings')
+                .update(updates)
+                .eq('id', bookingId);
             if (error) throw error;
 
             const statusLabels: Record<string, string> = {
@@ -328,7 +347,7 @@ export function DashboardScreen(): React.JSX.Element {
             <TouchableOpacity style={styles.summaryCard} onPress={refreshLocation} activeOpacity={0.7}>
                 <View style={styles.cardHeaderRow}>
                     <Text style={[styles.summaryTitle, { color: latitude ? '#34d399' : '#fbbf24' }]}>Location</Text>
-                    <Text style={styles.summaryIcon}>{locationLoading ? '⏳' : latitude ? '�' : '⚠️'}</Text>
+                    <Text style={styles.summaryIcon}>{locationLoading ? '⏳' : latitude ? '✅' : '⚠️'}</Text>
                 </View>
                 <Text style={[styles.summaryValue, { fontSize: 16, color: latitude ? '#34d399' : '#fbbf24' }]}>
                     {locationLoading ? 'Detecting...' : latitude ? '✓ Detected' : 'Tap to enable'}
@@ -397,8 +416,8 @@ export function DashboardScreen(): React.JSX.Element {
         if (!activeBooking) return null;
         const getNextAction = (s: string) => {
             switch (s) {
-                case 'accepted': return { label: '📍 Mark Arrived', next: 'en_route' };
-                case 'en_route': return { label: '🔨 Start Work', next: 'in_progress' };
+                case 'accepted': return { label: '🚗 Leave for Job', next: 'en_route' };
+                case 'en_route': return { label: '📍 Mark Arrived', next: 'in_progress' };
                 case 'in_progress': return { label: '✅ Complete Job', next: 'completed' };
                 default: return null;
             }
@@ -421,6 +440,25 @@ export function DashboardScreen(): React.JSX.Element {
                 {activeBooking.address_line1 && (
                     <Text style={styles.addressText}>📍 {activeBooking.address_line1}{activeBooking.city ? `, ${activeBooking.city}` : ''}</Text>
                 )}
+
+                {/* Tracking / ETA Banner */}
+                {activeBooking.status === 'en_route' && (
+                    <View style={styles.trackingBanner}>
+                        <Text style={styles.trackingBannerIcon}>🚗</Text>
+                        <View style={styles.trackingBannerContent}>
+                            <Text style={styles.trackingBannerTitle}>You are on the way</Text>
+                            {etaMinutes !== null ? (
+                                <Text style={styles.trackingBannerSubtitle}>
+                                    ETA: {etaMinutes} mins ({((distanceRemaining || 0) / 1000).toFixed(1)} km)
+                                </Text>
+                            ) : (
+                                <Text style={styles.trackingBannerSubtitle}>Calculating ETA...</Text>
+                            )}
+                        </View>
+                        {isTracking && <ActivityIndicator size="small" color="#10b981" />}
+                    </View>
+                )}
+
                 {action && (
                     <TouchableOpacity
                         style={[styles.actionButton, processingId === activeBooking.id && styles.disabledButton]}
@@ -577,14 +615,22 @@ const styles = StyleSheet.create({
     distanceBadge: { fontSize: 12, color: '#94a3b8', backgroundColor: '#334155', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
 
     detailsRow: { flexDirection: 'row', gap: 14, marginBottom: 6 },
-    detailText: { fontSize: 13, color: '#94a3b8' },
-    addressText: { fontSize: 13, color: '#94a3b8', marginTop: 4 },
+    detailText: { color: '#cbd5e1', fontSize: 14 },
+    addressText: { color: '#cbd5e1', fontSize: 14, marginBottom: 16 },
+    trackingBanner: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16, 185, 129, 0.15)',
+        padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#10b981', marginBottom: 16,
+    },
+    trackingBannerIcon: { fontSize: 24, marginRight: 12 },
+    trackingBannerContent: { flex: 1 },
+    trackingBannerTitle: { fontSize: 14, fontWeight: '700', color: '#10b981' },
+    trackingBannerSubtitle: { fontSize: 12, color: '#f8fafc', marginTop: 2 },
     buttonRow: { flexDirection: 'row', gap: 12, marginTop: 14 },
     rejectButton: { flex: 1, borderWidth: 1, borderColor: '#475569', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
     rejectButtonText: { color: '#94a3b8', fontSize: 14, fontWeight: '600' },
     acceptButton: { flex: 1, backgroundColor: '#10b981', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
     acceptButtonText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-    actionButton: { backgroundColor: '#10b981', borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 14 },
+    actionButton: { backgroundColor: '#10b981', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 14 },
     actionButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
     disabledButton: { opacity: 0.6 },
     listContent: { paddingBottom: 24 },

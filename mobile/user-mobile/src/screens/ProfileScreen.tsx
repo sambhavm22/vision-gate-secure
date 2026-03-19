@@ -28,7 +28,9 @@ export function ProfileScreen(): React.JSX.Element {
     const MENU_ITEMS = [
         { id: '1', title: 'Your Experts', icon: '👥', route: 'YourExperts' },
         { id: '2', title: 'Saved Addresses', icon: '🏠', route: 'SavedAddress' },
-        { id: '3', title: 'Manage Account', icon: '⚙️' },
+        { id: '3', title: 'Reminder Settings', icon: '🔔', route: 'ReminderSettings' },
+        { id: '4', title: 'My Disputes', icon: '⚠️', route: 'MyDisputes' },
+        { id: '5', title: 'Manage Account', icon: '⚙️' },
     ];
 
     const handleQuickAction = (route?: string) => {

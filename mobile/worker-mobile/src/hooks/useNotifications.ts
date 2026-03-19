@@ -89,10 +89,20 @@ async function registerForPushNotifications(userId: string): Promise<void> {
 
         console.log('[Push] Permission granted, getting device token...');
 
-        // Get NATIVE device push token (FCM token on Android, APNs token on iOS)
-        const tokenData = await Notifications.getDevicePushTokenAsync();
-        const deviceToken =
-            typeof tokenData.data === 'string' ? tokenData.data : JSON.stringify(tokenData.data);
+        // Get EXPO push token
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+
+        if (!projectId) {
+            console.error('[Push] EAS Project ID not found in app config!');
+            Alert.alert('[Push Debug]', 'EAS Project ID is missing from app.config.js');
+            return;
+        }
+
+        const tokenData = await Notifications.getExpoPushTokenAsync({
+            projectId,
+        });
+
+        const deviceToken = typeof tokenData.data === 'string' ? tokenData.data : JSON.stringify(tokenData.data);
 
         console.log('[Push] Expo push token:', tokenData.data);
 
