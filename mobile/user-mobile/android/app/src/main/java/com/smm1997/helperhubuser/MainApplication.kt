@@ -1,4 +1,4 @@
-package com.usermobile
+package com.smm1997.helperhubuser
 import android.content.res.Configuration
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper

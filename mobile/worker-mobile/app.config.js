@@ -3,6 +3,7 @@ module.exports = {
     slug: 'helperhub-worker',
     version: '1.0.0',
     scheme: 'worker-mobile',
+    jsEngine: 'hermes',
     platforms: ['ios', 'android'],
     plugins: [
         [

@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { RootStackParamList } from '../App';
 import { useLocation } from '../hooks/useLocation';
+import { useRazorpay } from '../hooks/useRazorpay';
 import { supabase } from '../services/supabase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Booking'>;
@@ -35,6 +36,7 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
     });
 
     const [loading, setLoading] = useState(false);
+    const { initiatePayment, loading: paymentLoading } = useRazorpay();
 
     // expo-location hook for cross-platform location fetching
     const {
@@ -161,8 +163,8 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                 ? `${serviceName} - ${address.label} (Subscription: ${subMatch[1]})`
                 : `${serviceName} - ${address.label}`;
 
-            // 4. Insert booking
-            const { error: bookingError } = await supabase
+            // 4. Insert booking (status = requested; payment will be linked)
+            const { data: bookingData, error: bookingError } = await supabase
                 .from('bookings')
                 .insert({
                     customer_id: user.id,
@@ -177,7 +179,9 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                     ...(userLat && userLng
                         ? { location: `POINT(${userLng} ${userLat})` }
                         : {}),
-                });
+                })
+                .select('id')
+                .single();
 
             if (bookingError) {
                 Alert.alert('Booking Error', bookingError.message);
@@ -185,23 +189,75 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                 return;
             }
 
+            // 5. Get user profile for Razorpay prefill
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('full_name, email, phone')
+                .eq('id', user.id)
+                .single();
+
             setLoading(false);
-            Alert.alert(
-                'Booking Confirmed! ✅',
-                `Your ${serviceName} service has been booked for ₹${price || 400}.\n\nYou can view it in My Bookings.`,
-                [
-                    {
-                        text: 'View My Bookings',
-                        onPress: () => {
-                            navigation.navigate('MainTabs', { screen: 'MyBookings' });
+
+            // 6. Initiate Razorpay Payment
+            const bookingAmount = price || 400;
+            const result = await initiatePayment(bookingData.id, bookingAmount, {
+                name: profileData?.full_name || '',
+                email: profileData?.email || '',
+                contact: profileData?.phone || '',
+            });
+
+            if (result.success) {
+                Alert.alert(
+                    'Payment Successful! ✅',
+                    `Your ${serviceName} service has been booked and paid (₹${bookingAmount}).\n\nPayment ID: ${result.paymentId}`,
+                    [
+                        {
+                            text: 'View My Bookings',
+                            onPress: () => navigation.navigate('MainTabs', { screen: 'MyBookings' }),
                         },
-                    },
-                    {
-                        text: 'OK',
-                        onPress: () => navigation.popToTop(),
-                    },
-                ]
-            );
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.popToTop(),
+                        },
+                    ]
+                );
+            } else {
+                // Payment failed or cancelled — prompt retry
+                Alert.alert(
+                    'Payment Not Completed',
+                    result.error || 'Something went wrong with payment.',
+                    [
+                        {
+                            text: 'Retry Payment',
+                            onPress: async () => {
+                                const retryResult = await initiatePayment(bookingData.id, bookingAmount, {
+                                    name: profileData?.full_name || '',
+                                    email: profileData?.email || '',
+                                    contact: profileData?.phone || '',
+                                });
+                                if (retryResult.success) {
+                                    Alert.alert('Payment Successful! ✅', 'Your booking is confirmed.', [
+                                        { text: 'View My Bookings', onPress: () => navigation.navigate('MainTabs', { screen: 'MyBookings' }) },
+                                    ]);
+                                } else {
+                                    Alert.alert('Payment Failed', retryResult.error || 'Please try again from My Bookings.');
+                                }
+                            },
+                        },
+                        {
+                            text: 'Pay Later',
+                            style: 'cancel',
+                            onPress: () => {
+                                Alert.alert(
+                                    'Booking Created',
+                                    'Your booking has been created. You can complete payment from My Bookings.',
+                                    [{ text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'MyBookings' }) }]
+                                );
+                            },
+                        },
+                    ]
+                );
+            }
         } catch (err) {
             setLoading(false);
             Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong');
@@ -324,14 +380,14 @@ export function BookingScreen({ route, navigation }: Props): React.JSX.Element {
                         <Text style={[styles.cancelButtonText, isDarkMode && styles.darkText]}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[styles.saveButton, loading && styles.disabledButton]}
+                        style={[styles.saveButton, (loading || paymentLoading) && styles.disabledButton]}
                         onPress={handleProceedToPayment}
-                        disabled={loading}
+                        disabled={loading || paymentLoading}
                     >
-                        {loading ? (
+                        {(loading || paymentLoading) ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text style={styles.saveButtonText}>Save & Select</Text>
+                            <Text style={styles.saveButtonText}>Pay & Book</Text>
                         )}
                     </TouchableOpacity>
                 </View>

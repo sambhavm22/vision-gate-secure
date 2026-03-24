@@ -12,6 +12,13 @@ module.exports = {
     slug: 'helperhub-user',
     scheme: 'user-mobile',
     version: '3.1.9',
+    jsEngine: 'hermes',
+    ios: {
+        bundleIdentifier: 'com.smm1997.helperhubuser',
+    },
+    android: {
+        package: 'com.smm1997.helperhubuser',
+    },
     plugins: [
         [
             'expo-notifications',
@@ -27,3 +34,4 @@ module.exports = {
         },
     },
 };
+

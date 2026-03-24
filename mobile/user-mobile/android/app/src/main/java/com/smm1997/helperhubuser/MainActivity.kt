@@ -1,4 +1,4 @@
-package com.usermobile
+package com.smm1997.helperhubuser
 import expo.modules.ReactActivityDelegateWrapper
 
 import android.os.Bundle
